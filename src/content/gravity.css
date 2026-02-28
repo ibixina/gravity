@@ -1,0 +1,38 @@
+/* Styles for injected UI elements (like pick mode, gallery overlay) */
+
+#gravity-ui-root {
+    position: fixed;
+    z-index: 2147483647;
+    /* Max z-index to stay on top */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    /* Let clicks pass through initially */
+    font-family: 'Courier New', Courier, monospace;
+}
+
+#gravity-ui-root * {
+    pointer-events: auto;
+}
+
+.gravity-gallery-overlay {
+    display: none;
+    background: #ffffff;
+    /* A stark, solid background could be more brutalist/retro */
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    flex-direction: column;
+    color: #000000;
+    border: 4px solid #000000;
+    margin: 16px;
+    box-shadow: 8px 8px 0px #000000;
+}
+
+.gravity-gallery-overlay.active {
+    display: flex;
+}

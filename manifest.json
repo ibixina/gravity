@@ -1,0 +1,69 @@
+{
+    "manifest_version": 3,
+    "name": "Gravity: The Everything Downloader",
+    "version": "1.0.0",
+    "description": "Download any image, video, or audio from any website.",
+    "permissions": [
+        "activeTab",
+        "contextMenus",
+        "downloads",
+        "notifications",
+        "storage",
+        "offscreen",
+        "scripting",
+        "webRequest",
+        "cookies",
+        "tabCapture",
+        "declarativeNetRequest"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "src/background/service-worker.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "src/content/gravity-early.js"
+            ],
+            "run_at": "document_start",
+            "world": "MAIN",
+            "all_frames": true
+        },
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "src/content/strategies/overlay-bypass.js",
+                "src/content/gravity-ui.js"
+            ],
+            "css": [
+                "src/content/gravity.css"
+            ],
+            "run_at": "document_idle",
+            "world": "ISOLATED",
+            "all_frames": false
+        }
+    ],
+    "action": {
+        "default_popup": "src/popup/popup.html",
+        "default_icon": {
+            "16": "icons/gravity-16.png",
+            "32": "icons/gravity-32.png",
+            "48": "icons/gravity-48.png",
+            "128": "icons/gravity-128.png"
+        }
+    },
+    "icons": {
+        "16": "icons/gravity-16.png",
+        "32": "icons/gravity-32.png",
+        "48": "icons/gravity-48.png",
+        "128": "icons/gravity-128.png"
+    }
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gravity Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <img src="../../icons/gravity-48.png" alt="Gravity Logo">
+            <h1>Gravity Settings</h1>
+        </header>
+
+        <main>
+            <section>
+                <h2>General</h2>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="auto-scan" checked>
+                        Auto-scan pages for media on load
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="show-badge" checked>
+                        Show media count badge on extension icon
+                    </label>
+                </div>
+            </section>
+
+            <section>
+                <h2>Downloads</h2>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="ask-save-location">
+                        Always ask where to save each file
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        Filename Template:
+                        <input type="text" id="filename-template" value="{site}_{title}_{index}">
+                    </label>
+                    <div class="help-text">Variables: {site}, {title}, {index}, {date}</div>
+                </div>
+            </section>
+
+            <div class="actions">
+                <button id="save-btn" class="btn primary">Save Settings</button>
+                <span id="status-msg"></span>
+            </div>
+        </main>
+    </div>
+    <script src="options.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+  <title>Gravity</title>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <img src="../../icons/gravity-48.png" alt="Gravity" class="logo">
+      <div class="header-text">
+        <h1>Gravity</h1>
+        <span class="tagline">The Everything Downloader</span>
+      </div>
+    </header>
+
+    <!-- Media sections will be dynamically inserted here -->
+    <div class="divider-label" id="media-label">DETECTED MEDIA</div>
+
+    <div id="no-media-msg" class="no-media" style="display:none;">
+      <span>No media detected yet.</span><br>
+      <span class="hint-text">Browse or play videos to capture them.</span>
+    </div>
+
+    <div class="media-counts" id="media-counts" style="display:none;">
+      <!-- Populated by popup.js -->
+    </div>
+
+
+    <div class="divider-label">ACTIONS</div>
+
+    <div class="actions">
+      <button id="btn-pick-mode" class="btn primary">
+        <span class="btn-icon">[+]</span>
+        <span class="btn-content">
+          <strong>Pick Mode</strong>
+          <small>Hover over any media to grab it</small>
+        </span>
+      </button>
+    </div>
+
+    <footer>
+      <span>v1.0.0</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>
