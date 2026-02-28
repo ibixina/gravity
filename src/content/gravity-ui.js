@@ -94,6 +94,88 @@ function showToast(message, level = 'error') {
     }, 4000);
 }
 
+const activeProgressToasts = new Map();
+
+function updateProgressToast(id, message, percent) {
+    let toast = activeProgressToasts.get(id);
+
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 2147483647;
+            width: 320px;
+            padding: 16px;
+            background: #fff;
+            color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            font-weight: bold;
+            border: 4px solid #000;
+            box-shadow: 6px 6px 0px rgba(0,0,0,1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.2s, transform 0.2s;
+            pointer-events: none;
+        `;
+
+        toast.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="display: flex; gap: 8px; align-items: center;">
+                    <span>[↓]</span>
+                    <span class="gravity-progress-msg" style="word-break: break-all; font-size: 11px;">${message}</span>
+                </span>
+            </div>
+            <div style="width: 100%; height: 8px; background: #e4e4e4; border: 2px solid #000; overflow: hidden; display: none;">
+                <div class="gravity-progress-bar" style="height: 100%; background: #000; width: 0%; transition: width 0.2s linear;"></div>
+            </div>
+        `;
+
+        document.documentElement.appendChild(toast);
+        activeProgressToasts.set(id, toast);
+
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        });
+    }
+
+    const msgEl = toast.querySelector('.gravity-progress-msg');
+    const barContainer = toast.children[1];
+    const barInner = toast.querySelector('.gravity-progress-bar');
+
+    msgEl.textContent = message;
+
+    if (typeof percent === 'number') {
+        barContainer.style.display = 'block';
+        barInner.style.width = Math.min(Math.max(percent, 0), 100) + '%';
+    } else {
+        barContainer.style.display = 'none';
+        barInner.style.width = '0%';
+    }
+}
+
+function removeProgressToast(id, finalMessage, isError) {
+    const toast = activeProgressToasts.get(id);
+    if (!toast) return;
+    activeProgressToasts.delete(id);
+
+    const msgEl = toast.querySelector('.gravity-progress-msg');
+    msgEl.textContent = finalMessage || (isError ? 'Fetch Failed.' : 'Fetch Complete.');
+    msgEl.style.color = isError ? 'red' : 'green';
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(12px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
 // Expose for the pick-mode handlers and right-click handler
 window.__gravityShowToast = showToast;
 
@@ -167,6 +249,14 @@ chrome.runtime.onMessage.addListener((request) => {
         const { level = 'error', message } = request.payload || {};
         showToast(message, level);
 
+    } else if (request.type === 'gravity:progress') {
+        const { id, message, percent } = request.payload || {};
+        if (id && message) updateProgressToast(id, message, percent);
+
+    } else if (request.type === 'gravity:progress-complete') {
+        const { id, message, isError } = request.payload || {};
+        if (id) removeProgressToast(id, message, isError);
+
     } else if (request.type === 'gravity:download-at-cursor') {
         const { x, y } = request.payload || {};
         const bypass = window.GravityOverlayBypass;
@@ -193,6 +283,14 @@ chrome.runtime.onMessage.addListener((request) => {
 // Used by both right-click tracking and pick-mode click handler.
 // Returns either a URL string or a special descriptor object for complex cases.
 function extractUrlFromElement(el) {
+    const raw = _extractUrlImpl(el);
+    if (typeof raw === 'string' && (/\.(m3u8|mpd)(\?|$)/i.test(raw) || /HLSPlaylist/i.test(raw))) {
+        return { type: 'need-network-monitor', elementType: 'video' };
+    }
+    return raw;
+}
+
+function _extractUrlImpl(el) {
     if (!el) return null;
     const tag = el.tagName;
 
@@ -251,7 +349,7 @@ function extractUrlFromElement(el) {
         }
         // Fall back to inner <img>
         const img = el.querySelector('img');
-        if (img) return extractUrlFromElement(img);
+        if (img) return _extractUrlImpl(img);
         return null;
     }
 
@@ -313,7 +411,7 @@ function extractCustomPlayerUrl(el) {
     // 1. Check the element's own attributes for video URLs
     const VIDEO_URL_ATTRS = [
         'src', 'data-src', 'data-video-src', 'data-url',
-        'data-video-url', 'preview', 'content-href',
+        'data-video-url', 'content-href',
         'data-embed-url', 'data-mp4-url', 'data-hls-url',
     ];
 

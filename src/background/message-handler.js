@@ -1,6 +1,6 @@
 import { MessageType } from '../shared/message-types.js';
 import { getTabMedia, registerBlobSource } from './network-monitor.js';
-import { notifyDownloadError, notifyTab, swNotify } from './notify.js';
+import { notifyDownloadError, notifyTab, swNotify, notifyProgressTab, notifyProgressCompleteTab } from './notify.js';
 
 
 export function setupMessageHandling() {
@@ -10,7 +10,7 @@ export function setupMessageHandling() {
             // ── Download requests ──────────────────────────────────────
             case MessageType.DOWNLOAD_REQUEST:
             case 'gravity:download-request':
-                handleDownloadRequest(message.payload, sendResponse);
+                handleDownloadRequest(message.payload, sender, sendResponse);
                 return true;
 
             // ── Pick Mode / right-click on blob: video ────────────────
@@ -64,6 +64,29 @@ export function setupMessageHandling() {
                         sendResponse?.(result);
                     });
                     return true;
+                }
+                break;
+
+            // ── Relay offscreen document progress to tab ───────────────
+            case 'gravity:progress-to-tab':
+                if (message.payload?.tabId) {
+                    notifyProgressTab(
+                        message.payload.tabId,
+                        message.payload.id,
+                        message.payload.message,
+                        message.payload.percent
+                    );
+                }
+                break;
+
+            case 'gravity:progress-complete-to-tab':
+                if (message.payload?.tabId) {
+                    notifyProgressCompleteTab(
+                        message.payload.tabId,
+                        message.payload.id,
+                        message.payload.message,
+                        message.payload.isError
+                    );
                 }
                 break;
         }
@@ -368,11 +391,9 @@ async function handleSegmentConcatenation(tabId, networkMedia, mediaType, sendRe
         const filename = `Gravity_${mediaType}_${Date.now()}.${ext}`;
 
         await notifyTab(tabId, 'success', `Downloading ${mediaType}...`);
-        const downloadId = await chrome.downloads.download({
-            url: bestTrack,
-            filename,
-            saveAs: false
-        });
+        await setupDownloadHeaders(bestTrack, tabId);
+
+        const downloadId = await downloadViaOffscreenDocument(bestTrack, tabId, filename);
         sendResponse?.({ success: true, downloadId });
     } catch (err) {
         await notifyTab(tabId, 'error', `Download failed: ${err.message}`);
@@ -536,7 +557,9 @@ async function handleDownloadNetworkMedia(payload, sender, sendResponse) {
         const ext = mimeToExt(best.contentType) || (elementType === 'audio' ? 'mp3' : 'mp4');
         const filename = `Gravity_${elementType}_${Date.now()}.${ext}`;
         try {
-            const downloadId = await chrome.downloads.download({ url: best.url, filename, saveAs: false });
+            await setupDownloadHeaders(best.url, tabId);
+
+            const downloadId = await downloadViaOffscreenDocument(best.url, tabId, filename);
             sendResponse?.({ success: true, downloadId });
         } catch (err) {
             notifyDownloadError(`Download failed: ${err.message}`);
@@ -577,9 +600,10 @@ function mimeToExt(mime) {
     return m[(mime || '').split(';')[0].trim()] || null;
 }
 
-async function handleDownloadRequest(payload, sendResponse) {
+async function handleDownloadRequest(payload, sender, sendResponse) {
     try {
         const { url, filename, fallbackFetch } = payload;
+        const tabId = sender?.tab?.id || payload.tabId;
 
         if (url.startsWith('data:')) {
             const downloadId = await chrome.downloads.download({
@@ -595,23 +619,16 @@ async function handleDownloadRequest(payload, sendResponse) {
             return;
         }
 
-        if (!fallbackFetch) {
-            const downloadId = await chrome.downloads.download({
-                url, filename: filename || inferFilename(url, ''), saveAs: false
-            });
-            sendResponse?.({ success: true, downloadId });
-            return;
-        }
+        // Because of Chromium Bug #1342222, DNR rules are NOT applied to chrome.downloads.download natively.
+        // To bypass 403 Forbidden errors (e.g. from CDNs requiring Referer/Origin checks),
+        // we MUST fetch the data inside the background service worker (which respects our DNR rules),
+        // generate a blob URL, and then download the blob URL.
 
-        const response = await fetch(url, { credentials: 'include' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        await setupDownloadHeaders(url, tabId);
 
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const downloadId = await chrome.downloads.download({
-            url: blobUrl, filename: filename || inferFilename(url, blob.type), saveAs: false
-        });
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+        const fname = filename || inferFilename(url, '');
+        const downloadId = await downloadViaOffscreenDocument(url, tabId, fname);
+
         sendResponse?.({ success: true, downloadId });
 
     } catch (error) {
@@ -630,6 +647,48 @@ function handleGetTabMedia(tabId, sendResponse) {
         hls: store.hls,
         dash: store.dash,
     });
+}
+
+let currentRuleId = 1000;
+export async function setupDownloadHeaders(url, tabId) {
+    if (!tabId || !url.startsWith('http')) return;
+    try {
+        const tab = await chrome.tabs.get(tabId);
+        if (!tab || !tab.url || !tab.url.startsWith('http')) return;
+
+        const origin = new URL(tab.url).origin;
+        const referer = tab.url;
+        let urlToMatch = url.split('#')[0];
+        try { urlToMatch = urlToMatch.split('?')[0]; } catch { }
+
+        const newRuleId = currentRuleId++;
+        if (currentRuleId > 5000) currentRuleId = 1000;
+
+        await chrome.declarativeNetRequest.updateDynamicRules({
+            removeRuleIds: [newRuleId],
+            addRules: [{
+                id: newRuleId,
+                priority: 1,
+                action: {
+                    type: 'modifyHeaders',
+                    requestHeaders: [
+                        { header: 'Referer', operation: 'set', value: referer },
+                        { header: 'Origin', operation: 'set', value: origin },
+                        { header: 'Sec-Fetch-Site', operation: 'set', value: 'same-site' },
+                        { header: 'Sec-Fetch-Mode', operation: 'set', value: 'no-cors' },
+                        { header: 'Sec-Fetch-Dest', operation: 'set', value: 'video' }
+                    ]
+                },
+                condition: {
+                    urlFilter: urlToMatch,
+                    resourceTypes: ['main_frame', 'sub_frame', 'xmlhttprequest', 'other']
+                }
+            }]
+        });
+        console.log(`[Gravity SW] Added DNR rule ${newRuleId} for url: ${urlToMatch}`);
+    } catch (e) {
+        console.warn('[Gravity SW] DNR failed', e);
+    }
 }
 
 function inferFilename(url, mimeType, contentDisposition) {
@@ -659,4 +718,60 @@ function inferFilename(url, mimeType, contentDisposition) {
     // 3. Fall back to MIME-based name with timestamp
     const ext = mimeToExt(mimeType) || 'bin';
     return `Gravity_media_${Date.now()}.${ext}`;
+}
+
+let creatingOffscreen;
+async function setupOffscreenDocument() {
+    const offscreenUrl = chrome.runtime.getURL('src/background/offscreen.html');
+    const existingContexts = await chrome.runtime.getContexts({
+        contextTypes: ['OFFSCREEN_DOCUMENT'],
+        documentUrls: [offscreenUrl]
+    });
+
+    if (existingContexts.length > 0) return;
+
+    if (creatingOffscreen) {
+        await creatingOffscreen;
+    } else {
+        creatingOffscreen = chrome.offscreen.createDocument({
+            url: 'src/background/offscreen.html',
+            reasons: ['BLOBS', 'WORKERS'],
+            justification: 'Fetch media into a blob to bypass background script limitations'
+        });
+        await creatingOffscreen;
+        creatingOffscreen = null;
+    }
+}
+
+export async function downloadViaOffscreenDocument(url, tabId, filename) {
+    await setupOffscreenDocument();
+
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+            type: 'gravity:offscreen-fetch',
+            payload: { url, filename, tabId }
+        }, (response) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+            }
+            if (!response) {
+                reject(new Error("No response from offscreen document"));
+                return;
+            }
+            if (!response.success) {
+                reject(new Error(response.error || "Offscreen fetch failed"));
+                return;
+            }
+
+            // Perform the actual browser download action in the SW
+            chrome.downloads.download({
+                url: response.blobUrl,
+                filename,
+                saveAs: false
+            }, (downloadId) => {
+                resolve(downloadId);
+            });
+        });
+    });
 }

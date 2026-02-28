@@ -1,6 +1,7 @@
 import { MessageType } from '../shared/message-types.js';
 import { notifyTab, notifyDownloadError } from './notify.js';
 import { getTabMedia } from './network-monitor.js';
+import { setupDownloadHeaders, downloadViaOffscreenDocument } from './message-handler.js';
 
 
 export function setupContextMenus() {
@@ -64,7 +65,7 @@ export function setupContextMenus() {
             case 'gravity-download-video':
             case 'gravity-download-audio':
                 if (info.srcUrl) {
-                    triggerDownload(info.srcUrl, tab.id);
+                    await triggerDownload(info.srcUrl, tab.id);
                 }
                 break;
 
@@ -92,7 +93,7 @@ async function handleSaveHere(info, tab) {
         // srcUrl is populated — use it directly.
         if (info.srcUrl && typeof info.srcUrl === 'string' &&
             !info.srcUrl.startsWith('data:')) {
-            triggerDownload(info.srcUrl, tab.id);
+            await triggerDownload(info.srcUrl, tab.id);
             return;
         }
 
@@ -133,7 +134,7 @@ async function handleSaveHere(info, tab) {
         }
 
         // ── Regular https:// or http:// URL ─────────────────────────────────
-        triggerDownload(cached, tab.id);
+        await triggerDownload(cached, tab.id);
 
     } catch (err) {
         console.error('[Gravity] handleSaveHere failed:', err);
@@ -150,14 +151,14 @@ async function handleSaveHere(info, tab) {
 async function handleNetworkMonitorDownload(tabId, elementType) {
     const store = getTabMedia(tabId);
     const list = elementType === 'audio' ? store.audio : store.video;
-    
+
     if (list.length === 0) {
         // Try downloading captured segments instead
         const result = await chrome.runtime.sendMessage({
             type: 'gravity:download-segments',
             payload: { elementType }
         });
-        
+
         if (!result?.success) {
             await notifyTab(tabId, 'error',
                 `No ${elementType} URL detected yet. Press Play on the video first, then right-click again.`);
@@ -167,25 +168,19 @@ async function handleNetworkMonitorDownload(tabId, elementType) {
 
     // Find the best quality URL
     const best = list.reduce((a, b) => (b.size || 0) > (a.size || 0) ? b : a, list[0]);
-    
+
     const ext = best.contentType?.includes('audio') ? 'mp3' : 'mp4';
     const filename = `Gravity_${elementType}_${Date.now()}.${ext}`;
-    
-    triggerDownload(best.url, tabId, filename);
+
+    await triggerDownload(best.url, tabId, filename);
 }
 
-function triggerDownload(url, tabId, filename) {
-    const opts = {
-        url,
-        saveAs: false
-    };
-    
-    if (filename) {
-        opts.filename = filename;
-    }
-    
-    chrome.downloads.download(opts).catch(async err => {
+async function triggerDownload(url, tabId, filename) {
+    try {
+        await setupDownloadHeaders(url, tabId);
+        await downloadViaOffscreenDocument(url, tabId, filename);
+    } catch (err) {
         console.error('[Gravity] Download failed:', err);
         await notifyTab(tabId, 'error', `Download failed: ${err.message}`);
-    });
+    }
 }

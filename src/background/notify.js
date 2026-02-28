@@ -47,3 +47,29 @@ export async function notifyTab(tabId, level, message) {
         swNotify(level, level === 'error' ? 'Error' : 'Notice', message);
     }
 }
+
+export async function notifyProgressTab(tabId, id, message, percent) {
+    try {
+        await chrome.tabs.sendMessage(tabId, {
+            type: 'gravity:progress',
+            payload: { id, message, percent }
+        });
+    } catch {
+        // Tab not listening, ignore progress updates
+    }
+}
+
+export async function notifyProgressCompleteTab(tabId, id, message, isError) {
+    try {
+        await chrome.tabs.sendMessage(tabId, {
+            type: 'gravity:progress-complete',
+            payload: { id, message, isError }
+        });
+    } catch {
+        if (isError) {
+            swNotify('error', 'Error', message);
+        } else {
+            swNotify('success', 'Complete', message);
+        }
+    }
+}

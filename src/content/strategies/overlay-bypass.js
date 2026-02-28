@@ -20,7 +20,7 @@ class OverlayBypass {
     // ── URL-like attributes that custom players often use ──────────────────
     static MEDIA_URL_ATTRS = [
         'src', 'data-src', 'data-video-src', 'data-url',
-        'data-video-url', 'preview', 'poster', 'content-href',
+        'data-video-url', 'poster', 'content-href',
         'data-embed-url', 'data-mp4-url', 'data-hls-url',
     ];
 

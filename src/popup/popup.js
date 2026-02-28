@@ -14,12 +14,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.close();
     });
 
-    // ── Settings ──────────────────────────────────────────────────────────────
-    optionsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        chrome.runtime.openOptionsPage();
-    });
-
     if (!isWebPage) return;
 
     // ── Fetch data ─────────────────────────────────────────────────────────────
@@ -158,7 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const name = inferName(v.url, ext);
                 chrome.runtime.sendMessage({
                     type: 'gravity:download-request',
-                    payload: { url: v.url, filename: name }
+                    payload: { url: v.url, filename: name, tabId: tab.id }
                 });
                 btn.textContent = '✓';
                 setTimeout(() => window.close(), 600);
@@ -169,7 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const ext = mimeToExt(best.contentType) || 'mp4';
                 chrome.runtime.sendMessage({
                     type: 'gravity:download-request',
-                    payload: { url: best.url, filename: inferName(best.url, ext) }
+                    payload: { url: best.url, filename: inferName(best.url, ext), tabId: tab.id }
                 });
                 setTimeout(() => window.close(), 600);
             },
@@ -193,7 +187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const ext = mimeToExt(a.contentType) || 'mp3';
                 chrome.runtime.sendMessage({
                     type: 'gravity:download-request',
-                    payload: { url: a.url, filename: inferName(a.url, ext) }
+                    payload: { url: a.url, filename: inferName(a.url, ext), tabId: tab.id }
                 });
                 btn.textContent = '✓';
                 setTimeout(() => window.close(), 600);
@@ -204,7 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const ext = mimeToExt(best.contentType) || 'mp3';
                 chrome.runtime.sendMessage({
                     type: 'gravity:download-request',
-                    payload: { url: best.url, filename: inferName(best.url, ext) }
+                    payload: { url: best.url, filename: inferName(best.url, ext), tabId: tab.id }
                 });
                 setTimeout(() => window.close(), 600);
             },
