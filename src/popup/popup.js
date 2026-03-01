@@ -1,3 +1,5 @@
+import { inferFilename, shortenUrl, fmtBytes, escHtml } from '../shared/utils.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
     const btnPickMode = document.getElementById('btn-pick-mode');
     const optionsLink = document.getElementById('options-link');
@@ -13,6 +15,73 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.tabs.sendMessage(tab.id, { type: 'gravity:toggle-pick-mode' });
         window.close();
     });
+
+    // ── Active Downloads ────────────────────────────────────────────────────────
+    const dlsSection = document.getElementById('active-downloads-section');
+    const dlsList = document.getElementById('active-downloads-list');
+
+    try {
+        const activeDownloads = await new Promise((resolve) => {
+            chrome.downloads.search({ state: 'in_progress' }, resolve);
+        });
+
+        if (activeDownloads && activeDownloads.length > 0) {
+            dlsSection.style.display = 'block';
+
+            activeDownloads.forEach(dl => {
+                const row = document.createElement('div');
+                row.className = 'item-row';
+                row.style.borderLeftColor = '#006600'; // Green stripe for active
+
+                const info = document.createElement('div');
+                info.className = 'item-info';
+
+                const nameEl = document.createElement('div');
+                nameEl.className = 'item-name';
+
+                let displayName = dl.filename ? dl.filename.split(/[\/\\]/).pop() : shortenUrl(dl.url);
+                nameEl.textContent = displayName;
+                nameEl.title = dl.filename || dl.url;
+
+                const metaEl = document.createElement('div');
+                metaEl.className = 'item-meta';
+
+                let progressText = 'Downloading...';
+                if (dl.totalBytes > 0) {
+                    const percent = Math.floor((dl.bytesReceived / dl.totalBytes) * 100);
+                    // Prevent 100% jumping if size is approximated
+                    const capPercent = Math.min(percent, 99);
+                    progressText = `${capPercent}% · ${fmtBytes(dl.bytesReceived)} / ${fmtBytes(dl.totalBytes)}`;
+                } else if (dl.bytesReceived > 0) {
+                    progressText = `${fmtBytes(dl.bytesReceived)} received`;
+                }
+
+                metaEl.textContent = progressText;
+
+                info.appendChild(nameEl);
+                info.appendChild(metaEl);
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'btn-item-dl';
+                cancelBtn.textContent = '✕';
+                cancelBtn.style.color = '#cc0000';
+                cancelBtn.title = 'Cancel Download';
+                cancelBtn.addEventListener('click', () => {
+                    chrome.downloads.cancel(dl.id);
+                    row.remove();
+                    if (dlsList.children.length === 0) {
+                        dlsSection.style.display = 'none';
+                    }
+                });
+
+                row.appendChild(info);
+                row.appendChild(cancelBtn);
+                dlsList.appendChild(row);
+            });
+        }
+    } catch (err) {
+        console.warn('[Gravity Popup] Failed to get active downloads:', err);
+    }
 
     if (!isWebPage) return;
 
@@ -148,8 +217,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             getMeta: (v) => [v.contentType?.replace('video/', '') || '', v.size ? fmtBytes(v.size) : ''].filter(Boolean).join(' · '),
             onDownload: (v, btn) => {
                 btn.textContent = '…';
-                const ext = mimeToExt(v.contentType) || 'mp4';
-                const name = inferName(v.url, ext);
+                const name = inferFilename(v.url, v.contentType);
                 chrome.runtime.sendMessage({
                     type: 'gravity:download-request',
                     payload: { url: v.url, filename: name, tabId: tab.id }
@@ -160,10 +228,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             onDownloadAll: (btn) => {
                 const best = sorted[0];
                 btn.textContent = 'DOWNLOADING…';
-                const ext = mimeToExt(best.contentType) || 'mp4';
                 chrome.runtime.sendMessage({
                     type: 'gravity:download-request',
-                    payload: { url: best.url, filename: inferName(best.url, ext), tabId: tab.id }
+                    payload: { url: best.url, filename: inferFilename(best.url, best.contentType), tabId: tab.id }
                 });
                 setTimeout(() => window.close(), 600);
             },
@@ -184,10 +251,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             getMeta: (a) => [a.contentType?.replace('audio/', '') || '', a.size ? fmtBytes(a.size) : ''].filter(Boolean).join(' · '),
             onDownload: (a, btn) => {
                 btn.textContent = '…';
-                const ext = mimeToExt(a.contentType) || 'mp3';
                 chrome.runtime.sendMessage({
                     type: 'gravity:download-request',
-                    payload: { url: a.url, filename: inferName(a.url, ext), tabId: tab.id }
+                    payload: { url: a.url, filename: inferFilename(a.url, a.contentType), tabId: tab.id }
                 });
                 btn.textContent = '✓';
                 setTimeout(() => window.close(), 600);
@@ -195,10 +261,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             onDownloadAll: (btn) => {
                 const best = sorted[0];
                 btn.textContent = 'DOWNLOADING…';
-                const ext = mimeToExt(best.contentType) || 'mp3';
                 chrome.runtime.sendMessage({
                     type: 'gravity:download-request',
-                    payload: { url: best.url, filename: inferName(best.url, ext), tabId: tab.id }
+                    payload: { url: best.url, filename: inferFilename(best.url, best.contentType), tabId: tab.id }
                 });
                 setTimeout(() => window.close(), 600);
             },
@@ -217,19 +282,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             getLabel: (s) => shortenUrl(s.url),
             getMeta: (s) => s.contentType || '',
             onDownload: async (s, btn) => {
-                await navigator.clipboard.writeText(s.url);
-                btn.textContent = 'COPIED!';
-                setTimeout(() => { btn.textContent = 'COPY URL'; }, 1400);
+                btn.textContent = '…';
+                const ext = s.url.includes('.m3u8') ? 'ts' : 'mp4';
+                chrome.runtime.sendMessage({
+                    type: 'gravity:download-stream',
+                    payload: {
+                        url: s.url,
+                        filename: `Gravity_Stream_${Date.now()}.${ext}`,
+                        streamType: s.url.includes('.m3u8') ? 'hls' : 'dash',
+                        tabId: tab.id
+                    }
+                });
+                btn.textContent = '✓';
+                setTimeout(() => window.close(), 600);
             },
             onDownloadAll: async (btn) => {
                 const best = allStreams[allStreams.length - 1];
-                await navigator.clipboard.writeText(best.url);
-                btn.textContent = 'COPIED!';
-                setTimeout(() => { btn.textContent = 'COPY BEST URL'; }, 1500);
+                btn.textContent = 'DOWNLOADING…';
+                const ext = best.url.includes('.m3u8') ? 'ts' : 'mp4';
+                chrome.runtime.sendMessage({
+                    type: 'gravity:download-stream',
+                    payload: {
+                        url: best.url,
+                        filename: `Gravity_Stream_${Date.now()}.${ext}`,
+                        streamType: best.url.includes('.m3u8') ? 'hls' : 'dash',
+                        tabId: tab.id
+                    }
+                });
+                setTimeout(() => window.close(), 600);
             },
-            downloadAllLabel: 'COPY BEST URL',
-            itemBtnLabel: 'COPY URL',
-            hint: 'Paste into VLC or yt-dlp'
+            downloadAllLabel: 'DOWNLOAD BEST STREAM',
+            itemBtnLabel: 'DOWNLOAD',
+            hint: 'Downloads the highest quality stream'
         });
         sectionsAdded++;
     }
@@ -246,19 +330,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             getMeta: (img) => [img.contentType?.replace('image/', '') || '', img.size ? fmtBytes(img.size) : ''].filter(Boolean).join(' · '),
             onDownload: (img, btn) => {
                 btn.textContent = '…';
-                const ext = mimeToExt(img.contentType) || 'jpg';
                 chrome.runtime.sendMessage({
                     type: 'gravity:download-request',
-                    payload: { url: img.url, filename: inferName(img.url, ext) }
+                    payload: { url: img.url, filename: inferFilename(img.url, img.contentType) }
                 });
                 btn.textContent = '✓';
             },
             onDownloadAll: (btn) => {
                 sorted.forEach(img => {
-                    const ext = mimeToExt(img.contentType) || 'jpg';
                     chrome.runtime.sendMessage({
                         type: 'gravity:download-request',
-                        payload: { url: img.url, filename: inferName(img.url, ext) }
+                        payload: { url: img.url, filename: inferFilename(img.url, img.contentType) }
                     });
                 });
                 btn.textContent = `✓ ${sorted.length} QUEUED`;
@@ -365,56 +447,4 @@ function buildCollapsibleSection({
     container.appendChild(section);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Utilities
-// ─────────────────────────────────────────────────────────────────────────────
-function shortenUrl(url) {
-    if (!url) return '(unknown)';
-    try {
-        const u = new URL(url);
-        const host = u.hostname.replace(/^www\./, '');
-        const path = u.pathname.split('/').filter(Boolean).pop() || '/';
-        const name = decodeURIComponent(path).slice(0, 32);
-        return `${host}/${name}`;
-    } catch {
-        return url.slice(0, 40);
-    }
-}
-
-function fmtBytes(bytes) {
-    if (!bytes || bytes <= 0) return '';
-    if (bytes < 1024) return `${bytes}B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
-    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
-}
-
-function mimeToExt(mime) {
-    const m = {
-        'video/mp4': 'mp4', 'video/webm': 'webm', 'video/ogg': 'ogv',
-        'video/quicktime': 'mov', 'video/x-matroska': 'mkv',
-        'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg',
-        'audio/webm': 'weba', 'audio/aac': 'aac', 'audio/flac': 'flac',
-        'audio/wav': 'wav', 'audio/opus': 'opus',
-        'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif',
-        'image/webp': 'webp', 'image/avif': 'avif', 'image/svg+xml': 'svg',
-    };
-    return m[(mime || '').split(';')[0].trim()] || null;
-}
-
-function inferName(url, ext) {
-    try {
-        const path = new URL(url).pathname;
-        const parts = path.split('/').filter(Boolean);
-        for (let i = parts.length - 1; i >= 0; i--) {
-            const p = decodeURIComponent(parts[i]);
-            if (p.includes('.') && p.length > 3 && p.length < 100) {
-                return `Gravity_${p.replace(/[<>:"/\\|?*]/g, '_')}`;
-            }
-        }
-    } catch { }
-    return `Gravity_media_${Date.now()}.${ext}`;
-}
-
-function escHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+// Utilities imported from '../shared/utils.js' at the top of this file.

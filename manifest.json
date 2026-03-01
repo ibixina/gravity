@@ -48,7 +48,7 @@
             ],
             "run_at": "document_idle",
             "world": "ISOLATED",
-            "all_frames": false
+            "all_frames": true
         }
     ],
     "action": {
@@ -65,5 +65,9 @@
         "32": "icons/gravity-32.png",
         "48": "icons/gravity-48.png",
         "128": "icons/gravity-128.png"
+    },
+    "options_ui": {
+        "page": "src/options/options.html",
+        "open_in_tab": true
     }
 }

@@ -56,6 +56,7 @@
 
     function processYouTubeData(data) {
         if (!data?.streamingData) return;
+        console.log(`[Gravity Capture] YouTube player response intercepted. Video: ${data.videoDetails?.title}`);
 
         const videoDetails = data.videoDetails;
         const formats = [];
@@ -217,6 +218,7 @@
                 source
             });
         }
+        console.log(`[Gravity Capture] Captured segment for ${trackKey} (${source}): ${cloned.byteLength} bytes. Total captured: ${track.totalSize} bytes.`);
     }
 
     // ── Segment Storage (legacy MediaSource tracking) ────────────────────────
@@ -319,6 +321,7 @@
                             track.totalSize += clonedData.byteLength;
                             track.segmentCount++;
                             totalCapturedBytes += clonedData.byteLength;
+                            console.log(`[Gravity Capture] Captured segment for ${trackKey} (SourceBuffer): ${clonedData.byteLength} bytes. Total captured: ${track.totalSize} bytes.`);
                         }
                     }
                 }

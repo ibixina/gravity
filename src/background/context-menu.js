@@ -75,7 +75,7 @@ export function setupContextMenus() {
                 break;
 
             case 'gravity-open-gallery':
-                chrome.tabs.sendMessage(tab.id, { type: 'gravity:scan-request' });
+                chrome.tabs.sendMessage(tab.id, { type: MessageType.SCAN_REQUEST });
                 break;
         }
     });
@@ -109,9 +109,9 @@ async function handleSaveHere(info, tab) {
             // Nothing in the cache yet — the async blob conversion may have been
             // skipped (e.g. non-media element). Try a live lookup instead.
             chrome.tabs.sendMessage(tab.id, {
-                type: 'gravity:download-at-cursor',
+                type: MessageType.DOWNLOAD_AT_CURSOR,
                 payload: { x: info.x, y: info.y }
-            });
+            }, { frameId: info.frameId ?? 0 });
             return;
         }
 
@@ -127,7 +127,7 @@ async function handleSaveHere(info, tab) {
         // Route through the message handler which knows how to handle data URIs.
         if (cached.startsWith('data:')) {
             await chrome.runtime.sendMessage({
-                type: 'gravity:download-request',
+                type: MessageType.DOWNLOAD_REQUEST,
                 payload: { url: cached, filename: `Gravity_media_${Date.now()}` }
             });
             return;
@@ -155,7 +155,7 @@ async function handleNetworkMonitorDownload(tabId, elementType) {
     if (list.length === 0) {
         // Try downloading captured segments instead
         const result = await chrome.runtime.sendMessage({
-            type: 'gravity:download-segments',
+            type: MessageType.DOWNLOAD_SEGMENTS,
             payload: { elementType }
         });
 

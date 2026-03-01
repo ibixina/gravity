@@ -151,7 +151,7 @@ export function setupNetworkMonitor() {
             const list = store[category];
             if (!list.some(e => e.url === url)) {
                 list.push(entry);
-                console.log(`[Gravity NM] ${entry.isDashSegment ? 'segment' : 'full'} ${category}: ${url.slice(0, 80)}`);
+                console.log(`[Gravity NM] Captured ${category}: ${url.slice(0, 100)}... (Size: ${entry.size}, Type: ${entry.contentType}, Segment: ${entry.isDashSegment})`);
             }
         },
         { urls: ['<all_urls>'] },

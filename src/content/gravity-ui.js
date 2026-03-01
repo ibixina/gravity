@@ -77,7 +77,13 @@ function showToast(message, level = 'error') {
         transition: opacity 0.2s, transform 0.2s;
         pointer-events: none;
     `;
-    toast.innerHTML = `<span style="flex-shrink:0">${c.icon}</span><span>${message}</span>`;
+    const iconSpan = document.createElement('span');
+    iconSpan.style.flexShrink = '0';
+    iconSpan.textContent = c.icon;
+    const msgSpan = document.createElement('span');
+    msgSpan.textContent = message;
+    toast.appendChild(iconSpan);
+    toast.appendChild(msgSpan);
     document.documentElement.appendChild(toast);
 
     // Animate in
@@ -212,6 +218,7 @@ document.addEventListener('contextmenu', async (e) => {
     // process-scoped and often fail with "Failed to fetch". Instead, rely on
     // the network monitor which has captured the actual segment URLs.
     if (result.type === 'blob' && result.blobUrl) {
+        console.log(`[Gravity Selection] Blob URL identified: ${result.blobUrl}. Element: ${result.elementType}`);
         // Store sentinel for network monitor fallback
         // The network monitor has the actual video URLs from fetch/XHR interception
         window.__gravityLastRightClickUrl = `gravity-network-monitor:${result.elementType || 'video'}`;
@@ -221,6 +228,7 @@ document.addEventListener('contextmenu', async (e) => {
     // need-network-monitor: mark the element type so context-menu.js
     // can query the network monitor store instead.
     if (result.type === 'need-network-monitor') {
+        console.log(`[Gravity Selection] Segmented media identified. Deflecting to network monitor for: ${result.elementType}`);
         // Store a sentinel so context-menu.js knows to fall back to network monitor
         window.__gravityLastRightClickUrl = `gravity-network-monitor:${result.elementType}`;
     }
@@ -229,6 +237,7 @@ document.addEventListener('contextmenu', async (e) => {
 
 
 chrome.runtime.onMessage.addListener((request) => {
+    console.log(`[Gravity UI] Inbound message: ${request.type}`, request.payload);
     // NOTE: Do NOT return true here. None of these handlers call sendResponse,
     // so returning true would tell Chrome to keep the channel open indefinitely,
     // causing "message channel closed before a response was received" errors.
@@ -283,7 +292,9 @@ chrome.runtime.onMessage.addListener((request) => {
 // Used by both right-click tracking and pick-mode click handler.
 // Returns either a URL string or a special descriptor object for complex cases.
 function extractUrlFromElement(el) {
+    console.log(`[Gravity UI] Extracting from: <${el.tagName}>`, el);
     const raw = _extractUrlImpl(el);
+    console.log(`[Gravity UI] Extraction raw result:`, raw);
     if (typeof raw === 'string' && (/\.(m3u8|mpd)(\?|$)/i.test(raw) || /HLSPlaylist/i.test(raw))) {
         return { type: 'need-network-monitor', elementType: 'video' };
     }
@@ -379,6 +390,24 @@ function _extractUrlImpl(el) {
             return 'data:image/svg+xml;charset=utf-8,' +
                 encodeURIComponent('<?xml version="1.0" standalone="no"?>\r\n' + src);
         } catch (e) { return null; }
+    }
+
+    // ── IFRAME / EMBED / OBJECT ─────────────────────────────────────────────
+    if (tag === 'IFRAME' || tag === 'EMBED') {
+        const src = el.src || el.dataset?.src || el.getAttribute('src');
+        if (src && /\.(mp4|webm|ogg|m3u8|mpd|mov|m4v|mp3|m4a|wav)(\?|$)/i.test(src)) {
+            return src;
+        }
+        if (tag === 'IFRAME' && src) {
+            // Maybe it's a direct link to an MP4 masked as an iframe
+            return null; // Don't download embed pages directly as video
+        }
+    }
+    if (tag === 'OBJECT') {
+        const data = el.data || el.getAttribute('data');
+        if (data && /\.(mp4|webm|ogg|m3u8|mpd|mov|m4v|mp3|m4a|wav)(\?|$)/i.test(data)) {
+            return data;
+        }
     }
 
     // ── Custom video player web components ─────────────────────────────────
@@ -595,6 +624,7 @@ function extractAudioUrl(audio) {
 
 // Handles the result of extractUrlFromElement, including complex descriptors
 async function triggerDownload(result, fallbackFilename) {
+    console.log(`[Gravity UI] Triggering download for:`, result, fallbackFilename);
     if (!result) return;
 
     // Simple string URL — direct download
@@ -702,7 +732,8 @@ function handlePickMove(e) {
             'SVG': 'SVG', 'CANVAS': 'CANVAS', 'PICTURE': 'IMG',
             'SHREDDIT-PLAYER': 'VIDEO', 'AMP-VIDEO': 'VIDEO',
             'LITE-YOUTUBE': 'VIDEO', 'MEDIA-PLAYER': 'VIDEO',
-            'VIDEO-PLAYER': 'VIDEO',
+            'VIDEO-PLAYER': 'VIDEO', 'IFRAME': 'IFRAME',
+            'EMBED': 'EMBED', 'OBJECT': 'OBJECT',
         };
         const tagName = mediaEl.tagName || '';
         // Recognize any element with PLAYER in its tag as VIDEO
@@ -769,15 +800,24 @@ function renderGallery(mediaItems) {
 
         const res = item.width && item.height ? `${item.width}x${item.height}` : 'Unknown';
 
-        card.innerHTML = `
-            <div style="height: 120px; overflow: hidden; border: 2px dashed #000; background: #f4f4f0; display: flex; align-items: center; justify-content: center; image-rendering: pixelated;">
-                <img src="${item.url}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-            </div>
-            <div style="margin-top: 8px; font-size: 12px; font-weight: bold; color: #000; display: flex; justify-content: space-between;">
-                <span>${item.subtype.toUpperCase()}</span>
-                <span>${res}</span>
-            </div>
-        `;
+        // Build card using DOM API to avoid XSS via item.url
+        const imgContainer = document.createElement('div');
+        imgContainer.style.cssText = 'height: 120px; overflow: hidden; border: 2px dashed #000; background: #f4f4f0; display: flex; align-items: center; justify-content: center; image-rendering: pixelated;';
+        const img = document.createElement('img');
+        img.src = item.url;
+        img.style.cssText = 'max-width: 100%; max-height: 100%; object-fit: contain;';
+        imgContainer.appendChild(img);
+        card.appendChild(imgContainer);
+
+        const metaRow = document.createElement('div');
+        metaRow.style.cssText = 'margin-top: 8px; font-size: 12px; font-weight: bold; color: #000; display: flex; justify-content: space-between;';
+        const typeSpan = document.createElement('span');
+        typeSpan.textContent = item.subtype.toUpperCase();
+        const resSpan = document.createElement('span');
+        resSpan.textContent = res;
+        metaRow.appendChild(typeSpan);
+        metaRow.appendChild(resSpan);
+        card.appendChild(metaRow);
 
         const dlBtn = document.createElement('button');
         dlBtn.textContent = 'DOWNLOAD';

@@ -19,13 +19,17 @@ class ImageDetector {
         'SPAN', 'P', 'NAV', 'UL', 'OL', 'PICTURE'
     ]);
 
-    // Custom video player web components that wrap <video> in shadow DOM
-    static CUSTOM_PLAYER_TAGS = new Set([
-        'SHREDDIT-PLAYER', 'SHREDDIT-ASPECT-RATIO',
-        'MEDIA-PLAYER', 'VIDEO-PLAYER', 'BRIGHTCOVE-PLAYER',
-        'AMP-VIDEO', 'AMP-YOUTUBE', 'TWITTER-PLAYER',
-        'LITE-YOUTUBE', 'LITE-VIMEO', 'JWPLAYER',
-    ]);
+    // Custom video player web components that wrap <video> in shadow DOM.
+    // Uses the canonical set from OverlayBypass if available (loaded before us),
+    // with a fallback to avoid duplication drift.
+    static get CUSTOM_PLAYER_TAGS() {
+        return window.GravityOverlayBypass?.CUSTOM_PLAYER_TAGS || new Set([
+            'SHREDDIT-PLAYER', 'SHREDDIT-ASPECT-RATIO',
+            'MEDIA-PLAYER', 'VIDEO-PLAYER', 'BRIGHTCOVE-PLAYER',
+            'AMP-VIDEO', 'AMP-YOUTUBE', 'TWITTER-PLAYER',
+            'LITE-YOUTUBE', 'LITE-VIMEO', 'JWPLAYER',
+        ]);
+    }
 
     scan(root) {
         const shadowWalker = window.GravityShadowDomWalker;

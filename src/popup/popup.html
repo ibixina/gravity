@@ -17,6 +17,15 @@
       </div>
     </header>
 
+    <!-- Active Downloads Section -->
+    <div id="active-downloads-section" style="display:none;">
+      <div class="divider-label">ACTIVE DOWNLOADS</div>
+      <div id="active-downloads-list" class="item-list"
+        style="max-height: 120px; display:flex; flex-direction:column; margin-bottom: 12px; border: 2px solid var(--border); background: var(--bg); padding: 4px;">
+        <!-- Populated by popup.js -->
+      </div>
+    </div>
+
     <!-- Media sections will be dynamically inserted here -->
     <div class="divider-label" id="media-label">DETECTED MEDIA</div>
 
@@ -47,7 +56,7 @@
     </footer>
   </div>
 
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 
 </html>

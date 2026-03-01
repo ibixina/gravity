@@ -30,11 +30,14 @@ class OverlayBypass {
      * Handles standard media tags, custom video players, shadow DOMs, and CSS bgs.
      */
     static getMediaUnderCursor(x, y) {
+        console.log(`[Gravity Selection] Probing elements at (${x}, ${y})`);
         const elements = document.elementsFromPoint(x, y);
+        console.log(`[Gravity Selection] Found ${elements.length} elements under cursor`);
 
         for (const el of elements) {
             // ── Standard media elements ───────────────────────────────────
             if (el.tagName === 'IMG' || el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
+                console.log(`[Gravity Selection] Found standard media tag: <${el.tagName}>`, el);
                 return el;
             }
 
@@ -58,6 +61,7 @@ class OverlayBypass {
             // Sites like Reddit, Twitter, AMP wrap <video> inside custom
             // web components with shadow DOMs. Recognize them by tag name.
             if (OverlayBypass.CUSTOM_PLAYER_TAGS.has(el.tagName)) {
+                console.log(`[Gravity Selection] Found custom player tag: <${el.tagName}>`, el);
                 return el;
             }
 
@@ -117,6 +121,7 @@ class OverlayBypass {
             }
         }
 
+        console.warn(`[Gravity Selection] No media found at (${x}, ${y}) after probing ${elements.length} elements and ancestors.`);
         return null;
     }
 
@@ -130,6 +135,7 @@ class OverlayBypass {
                 // Quick sanity check: does it look like a media URL?
                 if (/\.(mp4|webm|mov|m3u8|mpd|m4v|ogg|ts|m4s)/i.test(val) ||
                     /v\.redd\.it|video|stream|media|cdn/i.test(val)) {
+                    console.log(`[Gravity Selection] Matched media URL in attribute [${attr}]:`, val);
                     return true;
                 }
             }
