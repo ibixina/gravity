@@ -1,7 +1,7 @@
 // download-manager.js — Handles offscreen document lifecycle and download execution.
 // Extracted from message-handler.js for single responsibility.
 
-import { mimeToExt, inferFilename } from '../shared/utils.js';
+import { mimeToExt, inferFilename, getTimestamp } from '../shared/utils.js';
 import { setupDownloadHeaders } from './header-manager.js';
 import { notifyDownloadError, notifyTab } from './notify.js';
 
@@ -114,7 +114,8 @@ export async function handleDownloadRequest(payload, sender, sendResponse) {
         const tabId = sender?.tab?.id || payload.tabId;
 
         if (url.startsWith('data:')) {
-            let finalName = filename || `gravity_media_${Date.now()}`;
+            const timestamp = getTimestamp();
+            let finalName = filename || `Gravity_media_${timestamp}`;
             const hasExt = /\.[a-zA-Z0-9]{2,5}$/.test(finalName);
             if (!hasExt) {
                 const mimeMatch = url.match(/^data:([^;]+);/);
@@ -235,7 +236,7 @@ export async function handleDownloadStream(payload, sender, sendResponse) {
         console.log(`[Gravity SW] Stream download requested: ${url} (${streamType})`);
         await setupDownloadHeaders(url, tabId);
 
-        const fname = filename || `Gravity_Stream_${Date.now()}.ts`;
+        const fname = filename || `Gravity_Stream_${getTimestamp()}.ts`;
         const downloadId = await downloadStreamViaOffscreenDocument(url, tabId, fname, streamType);
         console.log(`[Gravity SW] Stream download queued with ID: ${downloadId}`);
 

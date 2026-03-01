@@ -31,20 +31,46 @@ export function mimeToExt(mime) {
 }
 
 /**
+ * Generate a timestamp string for filenames (YYYYMMDD_HHMMSS format).
+ */
+export function getTimestamp() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    return `${year}${month}${day}_${hours}${minutes}${seconds}`;
+}
+
+/**
  * Infer a filename from a URL, MIME type, and optional Content-Disposition header.
- * All filenames are prefixed with "Gravity_".
+ * All filenames are prefixed with "Gravity_" and include a timestamp.
  */
 export function inferFilename(url, mimeType, contentDisposition) {
+    const timestamp = getTimestamp();
+    const ext = mimeToExt(mimeType) || 'bin';
+
     // 1. Prefer filename from Content-Disposition header (most accurate)
     if (contentDisposition) {
         const cdMatch = contentDisposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;\r\n"']+)['"]?/i);
         if (cdMatch && cdMatch[1]) {
             const name = decodeURIComponent(cdMatch[1].trim().replace(/^["']|["']$/g, ''));
-            if (name && name.length > 1) return `Gravity_${name}`;
+            if (name && name.length > 1) {
+                // Insert timestamp before extension
+                const cleanName = name.replace(/[<>:"\/\\|?*]/g, '_');
+                const lastDotIndex = cleanName.lastIndexOf('.');
+                if (lastDotIndex > 0) {
+                    const baseName = cleanName.slice(0, lastDotIndex);
+                    const fileExt = cleanName.slice(lastDotIndex + 1);
+                    return `Gravity_${baseName}_${timestamp}.${fileExt}`;
+                }
+                return `Gravity_${cleanName}_${timestamp}.${ext}`;
+            }
         }
     }
 
-    const ext = mimeToExt(mimeType) || 'bin';
     let namePart = null;
 
     // 2. Try to extract a meaningful name from the URL path
@@ -57,16 +83,23 @@ export function inferFilename(url, mimeType, contentDisposition) {
             if (part.includes('.') && part.length > 3 && part.length < 120) {
                 const popExt = part.split('.').pop().toLowerCase();
                 if (['php', 'asp', 'aspx', 'jsp', 'html', 'htm'].includes(popExt)) continue;
-                return `Gravity_${part.replace(/[<>:"/\\|?*]/g, '_')}`;
+                const cleanPart = part.replace(/[<>:"\/\\|?*]/g, '_');
+                const lastDotIndex = cleanPart.lastIndexOf('.');
+                if (lastDotIndex > 0) {
+                    const baseName = cleanPart.slice(0, lastDotIndex);
+                    const fileExt = cleanPart.slice(lastDotIndex + 1);
+                    return `Gravity_${baseName}_${timestamp}.${fileExt}`;
+                }
+                return `Gravity_${cleanPart}_${timestamp}.${ext}`;
             }
-            if (!namePart && part.length > 2 && part.length < 120) namePart = part.replace(/[<>:"/\\|?*]/g, '_');
+            if (!namePart && part.length > 2 && part.length < 120) namePart = part.replace(/[<>:"\/\\|?*]/g, '_');
         }
     } catch { }
 
-    if (namePart) return `Gravity_${namePart}.${ext}`;
+    if (namePart) return `Gravity_${namePart}_${timestamp}.${ext}`;
 
     // 3. Fall back to MIME-based name with timestamp
-    return `Gravity_media_${Date.now()}.${ext}`;
+    return `Gravity_media_${timestamp}.${ext}`;
 }
 
 /**
