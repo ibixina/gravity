@@ -10,55 +10,66 @@ const _activeRules = new Map(); // urlPattern → ruleId
  *
  * @param {string} url - The media URL being downloaded
  * @param {number} tabId - Source tab ID to derive Referer/Origin from
- * @param {boolean} [isDir=false] - If true, applies a wildcard rule for the URL directory
+ * @param {string} [manualReferer] - Optional manual referer to use instead of tab.url
  */
-export async function setupDownloadHeaders(url, tabId, isDir = false) {
+export async function setupDownloadHeaders(url, tabId, manualReferer = null) {
     if (!tabId || !url.startsWith('http')) return;
 
     let newRuleId;
     try {
         const tab = await chrome.tabs.get(tabId);
-        if (!tab || !tab.url || !tab.url.startsWith('http')) return;
+        if (!tab || (!tab.url && !manualReferer)) return;
 
-        const origin = new URL(tab.url).origin;
-        const referer = tab.url;
-        let urlToMatch = url.split('#')[0];
-        try { urlToMatch = urlToMatch.split('?')[0]; } catch { }
+        const referer = manualReferer || tab.url || "";
+        const urlObj = new URL(url);
+        const domain = urlObj.hostname;
 
-        if (isDir || urlToMatch.endsWith('.m3u8') || urlToMatch.endsWith('.mpd')) {
-            const lastSlash = urlToMatch.lastIndexOf('/');
-            if (lastSlash > 7) { // past the "https://" part
-                urlToMatch = urlToMatch.substring(0, lastSlash) + '/*';
+        // Determine Sec-Fetch-Site
+        let secFetchSite = 'cross-site';
+        try {
+            const pageUrlObj = new URL(tab.url);
+            if (pageUrlObj.origin === urlObj.origin) {
+                secFetchSite = 'same-origin';
             } else {
-                urlToMatch = urlToMatch + '/*';
+                const pageDomainParts = pageUrlObj.hostname.split('.');
+                const videoDomainParts = urlObj.hostname.split('.');
+                const pBase = pageDomainParts.slice(-2).join('.');
+                const vBase = videoDomainParts.slice(-2).join('.');
+                if (pBase === vBase) secFetchSite = 'same-site';
             }
-        }
+        } catch (e) { }
 
-        // Remove any existing rule for this URL pattern before creating a new one
-        const existingRuleId = _activeRules.get(urlToMatch);
-        const removeIds = existingRuleId ? [existingRuleId] : [];
+        // Use a broader filter to ensure we catch all redirects and segments
+        const urlToMatch = `*://${domain}/*`;
+
+        // Aggressively clean up ALL previous rules to avoid conflicts
+        const existingRules = await chrome.declarativeNetRequest.getSessionRules();
+        const removeIds = existingRules.map(r => r.id);
 
         newRuleId = ++_ruleIdCounter;
         _activeRules.set(urlToMatch, newRuleId);
 
         await chrome.declarativeNetRequest.updateSessionRules({
-            removeRuleIds: [...removeIds, newRuleId],
+            removeRuleIds: removeIds,
             addRules: [{
                 id: newRuleId,
-                priority: 1,
+                priority: 1000,
                 action: {
                     type: 'modifyHeaders',
                     requestHeaders: [
                         { header: 'Referer', operation: 'set', value: referer },
-                        { header: 'Origin', operation: 'set', value: origin },
-                        { header: 'Sec-Fetch-Site', operation: 'set', value: 'same-origin' },
-                        { header: 'Sec-Fetch-Mode', operation: 'set', value: 'cors' },
-                        { header: 'Sec-Fetch-Dest', operation: 'set', value: 'empty' }
+                        { header: 'User-Agent', operation: 'set', value: navigator.userAgent },
+                        { header: 'Sec-Fetch-Site', operation: 'set', value: secFetchSite },
+                        { header: 'Sec-Fetch-Mode', operation: 'set', value: 'no-cors' },
+                        { header: 'Sec-Fetch-Dest', operation: 'set', value: 'video' },
+                        { header: 'Range', operation: 'set', value: 'bytes=0-' },
+                        { header: 'Origin', operation: 'remove' },
+                        { header: 'X-Requested-With', operation: 'remove' }
                     ]
                 },
                 condition: {
                     urlFilter: urlToMatch,
-                    resourceTypes: ['xmlhttprequest', 'media', 'other']
+                    resourceTypes: ['main_frame', 'sub_frame', 'other', 'media', 'xmlhttprequest']
                 }
             }]
         });

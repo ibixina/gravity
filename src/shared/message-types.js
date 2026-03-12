@@ -9,10 +9,12 @@ export const MessageType = {
   RECORD_STOP: 'gravity:record-stop',
   UPDATE_BADGE: 'gravity:update-badge',
   DOWNLOAD_NETWORK_MEDIA: 'gravity:download-network-media',
+  DOWNLOAD_XHR: 'gravity:download-xhr',
   DOWNLOAD_STREAM: 'gravity:download-stream',
   DOWNLOAD_SEGMENTS: 'gravity:download-segments',
   YOUTUBE_VIDEO_EXTRACTED: 'gravity:youtube-video-extracted',
   ABORT_BUFFER: 'gravity:abort-buffer',
+  DOWNLOAD_INTERCEPTED: 'gravity:download-intercepted',
 
   // Service Worker → Content Script
   SCAN_TRIGGER: 'gravity:scan-trigger',

@@ -1,0 +1,344 @@
+{
+  "appDesc": {
+    "message": "Скачать видео из Интернета."
+  },
+  "restore_purchase_button": {
+    "message": "Восстановить покупку"
+  },
+  "get_premium_button": {
+    "message": "Получить премиум-версию"
+  },
+  "back": {
+    "message": "Назад"
+  },
+  "waiting_for_media": {
+    "message": "Ожидание медиа…"
+  },
+  "nomedia_title": {
+    "message": "Не видите нужное видео?"
+  },
+  "nomedia_description": {
+    "message": "Запустите видео (и пропустите рекламу, если есть), чтобы помочь обнаружить медиа. Или сообщите об отсутствии медиа."
+  },
+  "nomedia_reload_button": {
+    "message": "Принудительно запустить поиск"
+  },
+  "nomedia_reload_button_tooltip": {
+    "message": "Принудительно перезагрузить страницу (очистить cookies)"
+  },
+  "show_nomedia_button": {
+    "message": "Нет видео?"
+  },
+  "show_nomedia_button_tooltip": {
+    "message": "Нажмите здесь, если не можете найти свое видео"
+  },
+  "setting_button_tooltip": {
+    "message": "Настройки"
+  },
+  "history_button_tooltip": {
+    "message": "Показать историю загрузок"
+  },
+  "show_all_history_button": {
+    "message": "Показать все"
+  },
+  "complete_title": {
+    "message": "Завершено"
+  },
+  "hide_complete_button": {
+    "message": "Скрыть"
+  },
+  "translate_button_tooltip": {
+    "message": "Помочь с переводом VDH"
+  },
+  "open_source_tab_button_tooltip": {
+    "message": "Открыть вкладку с исходным кодом"
+  },
+  "retry_download_button_tooltip": {
+    "message": "Повторить загрузку"
+  },
+  "delete_file_button_tooltip": {
+    "message": "Удалить файл"
+  },
+  "download_directory_button_tooltip": {
+    "message": "Показать папку загрузок"
+  },
+  "clear_downloaded_tooltip": {
+    "message": "Очистить завершённые загрузки"
+  },
+  "show_in_popup_button_tooltip": {
+    "message": "Открыть во всплывающем окне"
+  },
+  "show_in_sidebar_button_tooltip": {
+    "message": "Открыть в боковой панели"
+  },
+  "video_not_playing_button_tooltip": {
+    "message": "Видео не воспроизводится?"
+  },
+  "play": {
+    "message": "Воспроизвести"
+  },
+  "warn_drm_tooltip": {
+    "message": "Обнаружена DRM-защита"
+  },
+  "version_title": {
+    "message": "Версия"
+  },
+  "account_title": {
+    "message": "Аккаунт"
+  },
+  "one_hundred_downloads_title": {
+    "message": "Вы загрузили 100 видео!"
+  },
+  "leave_review_description": {
+    "message": "Привет! 🤚 Video DownloadHelper можно пользоваться бесплатно. Хотите оставить положительный отзыв? Это мне очень поможет."
+  },
+  "leave_review_button": {
+    "message": "Оставить отзыв"
+  },
+  "account_status": {
+    "message": "Статус"
+  },
+  "account_status_premium": {
+    "message": "Premium ($1)"
+  },
+  "free_account": {
+    "message": "Бесплатный тариф"
+  },
+  "copy_to_clipboard": {
+    "message": "Скопировать информацию в буфер обмена"
+  },
+  "my_account_button": {
+    "message": "Мой аккаунт"
+  },
+  "download_title": {
+    "message": "Загрузки"
+  },
+  "show_notification": {
+    "message": "Показывать уведомление после завершения загрузки"
+  },
+  "max_parallel_downloads": {
+    "message": "Максимальное количество параллельных загрузок"
+  },
+  "saveas_detected_warning": {
+    "message": "Мы обнаружили, что после завершения загрузки в вашем браузере отображается диалоговое окно \"Сохранить как\". Мы рекомендуем отключить эту опцию в настройках вашего браузера"
+  },
+  "change_saveas_setting": {
+    "message": "Изменить настройку"
+  },
+  "private_browsing_title": {
+    "message": "Приватный режим"
+  },
+  "private_browsing_warning": {
+    "message": "Video DownloadHelper не работает в приватном режиме."
+  },
+  "private_browsing_notifications": {
+    "message": "Показывать уведомления для загрузок в приватном режиме"
+  },
+  "private_browsing_button": {
+    "message": "Изменить настройки приватного режима"
+  },
+  "prefer_original_audio": {
+    "message": "Отдавать предпочтение оригинальному звучанию"
+  },
+  "settings_history_title": {
+    "message": "История"
+  },
+  "transient_history_description": {
+    "message": "Показывать завершённые загрузки в панели"
+  },
+  "history_limit": {
+    "message": "Количество дней хранения истории"
+  },
+  "appearance_title": {
+    "message": "Внешний вид"
+  },
+  "theme_title": {
+    "message": "Тема"
+  },
+  "theme_light": {
+    "message": "Светлая тема"
+  },
+  "theme_dark": {
+    "message": "Темная тема"
+  },
+  "theme_system": {
+    "message": "Системная тема"
+  },
+  "popup_size_title": {
+    "message": "Размер окна"
+  },
+  "popup_size_small": {
+    "message": "Маленький"
+  },
+  "popup_size_medium": {
+    "message": "Средний"
+  },
+  "popup_size_big": {
+    "message": "Большой"
+  },
+  "panel_position_title": {
+    "message": "Положение панели"
+  },
+  "use_popup": {
+    "message": "Во всплывающем окне"
+  },
+  "use_sidebar": {
+    "message": "В боковой панели"
+  },
+  "behavior_title": {
+    "message": "Поведение"
+  },
+  "show_in_context_menu": {
+    "message": "Доступ к меню команд по правому клику мышью на целевой странице"
+  },
+  "restart_addon": {
+    "message": "Перезапустить расширение"
+  },
+  "reset_settings": {
+    "message": "Сбросить настройки"
+  },
+  "preview_mode_title": {
+    "message": "Превью для видео"
+  },
+  "preview_mode_none": {
+    "message": "Выключено"
+  },
+  "preview_mode_video": {
+    "message": "Короткое видео"
+  },
+  "preview_mode_image": {
+    "message": "Изображение"
+  },
+  "history_title": {
+    "message": "История загрузок"
+  },
+  "history_warning": {
+    "message": "Мы не записываем вашу историю загрузок. Хотите, чтобы Video DownloadHelper запоминал историю?"
+  },
+  "history_warning_2": {
+    "message": "Не волнуйтесь, все данные остаются на вашем устройстве. Мы ценим вашу конфиденциальность."
+  },
+  "enable_history": {
+    "message": "Включить историю"
+  },
+  "clear_history": {
+    "message": "Очистить историю"
+  },
+  "disable_history": {
+    "message": "Отключить историю"
+  },
+  "no_downloads_yet": {
+    "message": "Пока нет загрузок."
+  },
+  "download_failed": {
+    "message": "Ошибка загрузки"
+  },
+  "download_failed_description": {
+    "message": "Что-то пошло не так. Сообщите об ошибке, и мы постараемся разобраться (мы анонимно отправляем URL видео — мы не отслеживаем вас!)."
+  },
+  "download_interrupted": {
+    "message": "Загрузка прервана"
+  },
+  "download_interrupted_description": {
+    "message": "Нам удалось загрузить ваш файл, но возникли проблемы с сетью, поэтому файл может быть короче, чем ожидалось. Мы стараемся поддерживать как можно больше веб-сайтов, поэтому было бы очень полезно, если бы вы могли сообщить об этой проблеме (это анонимно!)."
+  },
+  "download_with_drm_failed_description": {
+    "message": "Что-то пошло не так. И мы думаем, что это видео защищено DRM. Мы не поддерживаем видео с DRM."
+  },
+  "no_youtube": {
+    "message": "Загрузка с YouTube запрещена"
+  },
+  "no_youtube_description": {
+    "message": "К сожалению, интернет-магазин Chrome не допускает расширений для загрузки видео с YouTube, потому эта функция отсутствует в версии дополнения для Chrome."
+  },
+  "premium_required": {
+    "message": "Требуется статус Premium"
+  },
+  "premium_yt_required_description": {
+    "message": "Без статуса Премиум загрузка с YouTube возможна только через 2 часа после предыдущей."
+  },
+  "premium_hls_required_description": {
+    "message": "Без статуса Премиум загрузка HLS возможна только через 2 часа после предыдущей."
+  },
+  "youtube_too_many_downloads": {
+    "message": "Упс, похоже, YouTube заблокирован"
+  },
+  "youtube_too_many_downloads_description": {
+    "message": "YouTube иногда ограничивает количество запрашиваемых видео. К сожалению, мы ничего не можем с этим поделать. Попробуйте еще раз позже."
+  },
+  "stop": {
+    "message": "Остановка"
+  },
+  "cancel": {
+    "message": "Отмена"
+  },
+  "copy_url": {
+    "message": "Копировать URL"
+  },
+  "always_copy_url": {
+    "message": "Всегда копировать URL"
+  },
+  "download_button": {
+    "message": "Скачать"
+  },
+  "download_as_button_and_menu": {
+    "message": "Скачать как..."
+  },
+  "rename_short": {
+    "message": "Переименовать"
+  },
+  "always_download_as_menu": {
+    "message": "Всегда загружать как..."
+  },
+  "download_audio_button": {
+    "message": "Аудио"
+  },
+  "download_audio_and_video_menu": {
+    "message": "Аудио и видео"
+  },
+  "download_audio_only_menu": {
+    "message": "Только аудио"
+  },
+  "audio_only_for_this_website": {
+    "message": "Всегда только аудио для этого сайта"
+  },
+  "details": {
+    "message": "Подробнее"
+  },
+  "report": {
+    "message": "Сообщить"
+  },
+  "reporting": {
+    "message": "Отправка…"
+  },
+  "not_playing_title": {
+    "message": "Видео не воспроизводится?"
+  },
+  "not_playing_broken_title": {
+    "message": "Проблемы со звуком или видео?"
+  },
+  "not_playing_broken_description": {
+    "message": "Сообщите о проблеме. Мы постараемся разобраться (мы анонимно отправляем URL видео — мы не отслеживаем вас!)"
+  },
+  "not_playing_broken_solution_title": {
+    "message": "Попробуйте современный видеоплеер"
+  },
+  "not_playing_broken_solution_windows_1": {
+    "message": "Рекомендуем VLC:"
+  },
+  "not_playing_broken_solution_mac_1": {
+    "message": "Рекомендуем IINA:"
+  },
+  "not_playing_broken_solution_2": {
+    "message": "Это современные, безопасные и открытые плееры."
+  },
+  "not_playing_default_player": {
+    "message": "Убедитесь, что ваш видеоплеер установлен по умолчанию"
+  },
+  "not_playing_default_player_solution_windows": {
+    "message": "В Windows: \"Панель управления\", выберите \"Программы по умолчанию\" и измените настройки для вашего плеера."
+  },
+  "not_playing_default_player_solution_mac": {
+    "message": "Откройте папку загрузок и кликните правой кнопкой мыши на видеофайле. Нажмите «Свойства» В разделе «Открыть с помощью» выберите IINA Нажмите «Изменить все»."
+  }
+}

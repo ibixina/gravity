@@ -627,31 +627,67 @@ async function triggerDownload(result, fallbackFilename) {
     console.log(`[Gravity UI] Triggering download for:`, result, fallbackFilename);
     if (!result) return;
 
-    // Simple string URL — direct download
-    if (typeof result === 'string') {
-        if (result.startsWith('chrome-extension://')) return;
-        chrome.runtime.sendMessage({
-            type: 'gravity:download-request',
-            payload: { url: result, filename: fallbackFilename }
-        });
-        return;
-    }
+    // Detect if we are inside an iframe to get the correct referer
+    let referer = window.location.href;
+    try {
+        if (window.parent !== window) {
+            referer = document.referrer || window.location.href;
+        }
+    } catch (e) { }
 
-    // Blob URL (MSE player like YouTube) — the blob itself is just a MediaSource
-    // handle, not actual video data. Route to the network monitor which has the
-    // real CDN segment URLs. The SW will deduplicate + strip range params.
-    if (result.type === 'blob' || result.type === 'need-network-monitor') {
-        chrome.runtime.sendMessage({
-            type: 'gravity:download-network-media',
-            payload: { elementType: result.elementType || 'video' }
-        }, (response) => {
-            // SW will show its own notification on error — nothing extra needed here
-            if (chrome.runtime.lastError) {
-                showToast('Could not reach the background script. Try reloading the extension.', 'error');
-            }
-        });
-        return;
-    }
+
+    const elementType = (typeof result === 'object' && result.elementType) ? result.elementType : 'video';
+
+    // 1. Try VDH intercept strategy first: use memory from gravity-early.js if available
+    chrome.runtime.sendMessage({
+        type: 'gravity:download-intercepted',
+        payload: { elementType, referer }
+    }, (response) => {
+        if (chrome.runtime.lastError) {
+            console.warn('[Gravity UI] Intercept failed or SW unavailable:', chrome.runtime.lastError.message);
+        }
+
+        if (response && response.success) {
+            console.log('[Gravity UI] Downloaded successfully via captured memory intercept');
+            return;
+        }
+
+        console.log('[Gravity UI] Memory intercept inapplicable/failed, falling back to network methods');
+
+        if (typeof result === 'string') {
+            if (result.startsWith('chrome-extension://')) return;
+
+            // Try In-Page XHR fallback first — it's the safest way to preserve tokens/session
+            console.log('[Gravity UI] Attempting In-Page XHR download for:', result);
+            chrome.runtime.sendMessage({
+                type: 'gravity:download-xhr',
+                payload: { url: result, filename: fallbackFilename, referer }
+            }, (res) => {
+                if (res && res.success) {
+                    console.log('[Gravity UI] In-page XHR download started.');
+                    return;
+                }
+
+                console.log('[Gravity UI] In-page XHR failed, falling back to background download manager.');
+                chrome.runtime.sendMessage({
+                    type: 'gravity:download-request',
+                    payload: { url: result, filename: fallbackFilename, referer }
+                });
+            });
+            return;
+        }
+
+        if (result.type === 'blob' || result.type === 'need-network-monitor') {
+            chrome.runtime.sendMessage({
+                type: 'gravity:download-network-media',
+                payload: { elementType: result.elementType || 'video', referer }
+            }, (netResponse) => {
+                if (chrome.runtime.lastError) {
+                    showToast('Could not reach the background script. Try reloading the extension.', 'error');
+                }
+            });
+        }
+    });
 }
 
 

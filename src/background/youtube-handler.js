@@ -321,10 +321,25 @@ async function handleSegmentConcatenation(tabId, networkMedia, mediaType, sendRe
         const filename = `Gravity_${mediaType}_${Date.now()}.${ext}`;
 
         await notifyTab(tabId, 'success', `Downloading ${mediaType}...`);
-        await setupDownloadHeaders(bestTrack, tabId);
+        await setupDownloadHeaders(bestTrack, tabId, networkMedia.referer);
 
-        const downloadId = await downloadViaOffscreenDocument(bestTrack, tabId, filename);
-        sendResponse?.({ success: true, downloadId });
+        chrome.downloads.download({
+            url: bestTrack,
+            filename: filename,
+            saveAs: false
+        }, (downloadId) => {
+            if (chrome.runtime.lastError) {
+                console.warn('[Gravity SW] Native segment conc download failed:', chrome.runtime.lastError.message);
+                downloadViaOffscreenDocument(bestTrack, tabId, filename, networkMedia.referer).then(dlId => {
+                    sendResponse?.({ success: true, downloadId: dlId });
+                }).catch(e => {
+                    sendResponse?.({ success: false, error: e.message });
+                });
+            } else {
+                sendResponse?.({ success: true, downloadId });
+            }
+        });
+        return;
     } catch (err) {
         await notifyTab(tabId, 'error', `Download failed: ${err.message}`);
         sendResponse?.({ success: false, error: err.message });
@@ -377,9 +392,24 @@ export async function handleDownloadNetworkMedia(payload, sender, sendResponse) 
         const ext = mimeToExt(best.contentType) || (elementType === 'audio' ? 'mp3' : 'mp4');
         const filename = `Gravity_${elementType}_${Date.now()}.${ext}`;
         try {
-            await setupDownloadHeaders(best.url, tabId);
-            const downloadId = await downloadViaOffscreenDocument(best.url, tabId, filename);
-            sendResponse?.({ success: true, downloadId });
+            await setupDownloadHeaders(best.url, tabId, payload?.referer);
+            chrome.downloads.download({
+                url: best.url,
+                filename: filename,
+                saveAs: false
+            }, (downloadId) => {
+                if (chrome.runtime.lastError) {
+                    console.warn('[Gravity SW] Native network media download failed:', chrome.runtime.lastError.message);
+                    downloadViaOffscreenDocument(best.url, tabId, filename).then(dlId => {
+                        sendResponse?.({ success: true, downloadId: dlId });
+                    }).catch(e => {
+                        sendResponse?.({ success: false, error: e.message });
+                    });
+                } else {
+                    sendResponse?.({ success: true, downloadId });
+                }
+            });
+            return;
         } catch (err) {
             notifyDownloadError(`Download failed: ${err.message}`);
             sendResponse?.({ success: false, error: err.message });

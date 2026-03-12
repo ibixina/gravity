@@ -11,8 +11,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     payload: { tabId, id: url, message: `Starting background fetch for ${filename || 'media'}...`, percent: 0 }
                 });
 
-                const response = await fetch(url, { credentials: 'include' });
-                if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+                const response = await fetch(url, {
+                    headers: {
+                        'Range': 'bytes=0-',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+
+                if (!response.ok && response.status !== 206) {
+                    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('text/html')) {
+                    throw new Error('Server returned HTML (Downloads disabled trap) instead of media.');
+                }
+
 
                 const contentLength = response.headers.get('content-length');
                 total = parseInt(contentLength, 10);

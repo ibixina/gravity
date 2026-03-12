@@ -32,13 +32,13 @@ async function setupOffscreenDocument() {
 
 // ── Download via Offscreen Document ─────────────────────────────────────────
 
-export async function downloadViaOffscreenDocument(url, tabId, filename) {
+export async function downloadViaOffscreenDocument(url, tabId, filename, referer = null) {
     await setupOffscreenDocument();
 
     return new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({
             type: 'gravity:offscreen-fetch',
-            payload: { url, filename, tabId }
+            payload: { url, filename, tabId, referer }
         }, (response) => {
             if (chrome.runtime.lastError) {
                 reject(new Error(chrome.runtime.lastError.message));
@@ -110,7 +110,7 @@ export async function downloadStreamViaOffscreenDocument(url, tabId, filename, t
 
 export async function handleDownloadRequest(payload, sender, sendResponse) {
     try {
-        const { url, filename, fallbackFetch } = payload;
+        const { url, filename, fallbackFetch, referer } = payload;
         const tabId = sender?.tab?.id || payload.tabId;
 
         if (url.startsWith('data:')) {
@@ -138,36 +138,71 @@ export async function handleDownloadRequest(payload, sender, sendResponse) {
 
         const fname = filename || inferFilename(url, '');
 
-        // 1. Try an in-page fetch first.
-        // This preserves SameSite cookies and native referers, fixing 403 Forbidden
-        // errors on protected same-origin files (like Torn.com).
-        if (tabId) {
-            try {
-                const inPageResults = await chrome.scripting.executeScript({
-                    target: { tabId, allFrames: true },
-                    func: _inPageDownload,
-                    args: [url, fname],
-                    world: 'MAIN'
-                });
+        // ── Auto-Detect Hotlink Traps ──
+        // Clear any existing DNR rules so our probe doesn't get masked by previous spoofing.
+        const existingRules = await chrome.declarativeNetRequest.getSessionRules();
+        await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: existingRules.map(r => r.id) });
 
-                const pageResult = inPageResults?.map(r => r.result).find(r => r && r.success);
-                if (pageResult) {
-                    console.log(`[Gravity SW] In-page download succeeded for: ${fname}`);
-                    sendResponse?.({ success: true, downloadId: 'in-page-download' });
-                    return;
-                }
-            } catch (pageErr) {
-                console.warn(`[Gravity SW] In-page download skipped/failed:`, pageErr);
+        let needsOffscreenBypass = false;
+        try {
+            console.log(`[Gravity SW] Probing URL for hotlink traps: ${url}`);
+            const controller = new AbortController();
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: { 'Referer': referer },
+                signal: controller.signal
+            });
+            const contentType = res.headers.get('content-type') || '';
+            controller.abort(); // We only need the headers, cancel immediately.
+
+            if (!res.ok || contentType.includes('text/html')) {
+                console.log(`[Gravity SW] Probe detected trap (Status: ${res.status}, Type: ${contentType}).`);
+                needsOffscreenBypass = true;
             }
+        } catch (e) {
+            // If fetch fails (e.g. strict CORS), it's highly likely a protected domain.
+            console.log(`[Gravity SW] Probe fetch failed (${e.message}), assuming protected domain.`);
+            needsOffscreenBypass = true;
         }
 
-        // 2. Offscreen fallback for cross-origin CORS-blocked requests
-        console.log(`[Gravity SW] Falling back to offscreen download: ${url} -> ${fname}`);
-        await setupDownloadHeaders(url, tabId);
-        const downloadId = await downloadViaOffscreenDocument(url, tabId, fname);
-        console.log(`[Gravity SW] Download successfully queued with ID: ${downloadId}`);
+        if (needsOffscreenBypass) {
+            console.log(`[Gravity SW] Forcing Offscreen Download to bypass native Chrome limitations for: ${url}`);
+            try {
+                const dlId = await downloadViaOffscreenDocument(url, tabId, fname, referer);
+                sendResponse?.({ success: true, downloadId: dlId });
+            } catch (e) {
+                sendResponse?.({ success: false, error: e.message });
+            }
+            return;
+        }
 
-        sendResponse?.({ success: true, downloadId });
+        // Try native direct download with headers first
+        console.log(`[Gravity SW] Starting native download with referer ${referer}: ${url} -> ${fname}`);
+        await setupDownloadHeaders(url, tabId, referer);
+
+        chrome.downloads.download({
+            url: url,
+            filename: fname,
+            saveAs: false
+        }, (downloadId) => {
+            if (chrome.runtime.lastError) {
+                console.warn('[Gravity SW] Native download failed:', chrome.runtime.lastError.message);
+
+                // 3. Fallback to offscreen only if native fails
+                console.log(`[Gravity SW] Falling back to offscreen download: ${url}`);
+                downloadViaOffscreenDocument(url, tabId, fname, referer).then(dlId => {
+                    sendResponse?.({ success: true, downloadId: dlId });
+                }).catch(e => {
+                    sendResponse?.({ success: false, error: e.message });
+                });
+            } else {
+                console.log(`[Gravity SW] Download successfully queued with ID: ${downloadId}`);
+                sendResponse?.({ success: true, downloadId });
+            }
+        });
+
+        // Return without resolving here since we sent response inside callback
+        return;
 
     } catch (error) {
         console.error('[Gravity SW] Download Request failed:', error);
@@ -176,55 +211,7 @@ export async function handleDownloadRequest(payload, sender, sendResponse) {
     }
 }
 
-/**
- * In-page download function. Runs inside the page's MAIN world via executeScript.
- * Cannot reference any module imports — must be fully self-contained.
- */
-function _inPageDownload(targetUrl, downloadName) {
-    try {
-        // This is a serialized function — NO access to outer scope or imports.
-        const MIME_MAP = {
-            'video/mp4': 'mp4', 'video/webm': 'webm', 'video/ogg': 'ogv',
-            'video/quicktime': 'mov', 'video/x-matroska': 'mkv',
-            'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg',
-            'audio/webm': 'weba', 'audio/aac': 'aac', 'audio/flac': 'flac',
-            'audio/wav': 'wav', 'image/jpeg': 'jpg', 'image/png': 'png',
-            'image/gif': 'gif', 'image/webp': 'webp', 'image/avif': 'avif',
-            'image/svg+xml': 'svg'
-        };
 
-        return fetch(targetUrl, { credentials: 'include' })
-            .then(res => {
-                if (!res.ok) return { success: false, status: res.status };
-                return res.blob().then(blob => {
-                    let finalName = downloadName;
-                    const hasExt = /\.[a-zA-Z0-9]{2,5}$/.test(finalName);
-                    if (!hasExt && blob.type) {
-                        const ext = MIME_MAP[blob.type.split(';')[0].trim()];
-                        if (ext) finalName += `.${ext}`;
-                    }
-
-                    const blobUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = blobUrl;
-                    a.download = finalName;
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
-                    a.click();
-
-                    setTimeout(() => {
-                        URL.revokeObjectURL(blobUrl);
-                        a.remove();
-                    }, 5000);
-
-                    return { success: true };
-                });
-            })
-            .catch(e => ({ success: false, error: e.message }));
-    } catch (e) {
-        return { success: false, error: e.message };
-    }
-}
 
 // ── Stream Download Handler ─────────────────────────────────────────────────
 

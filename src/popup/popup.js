@@ -219,8 +219,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btn.textContent = '…';
                 const name = inferFilename(v.url, v.contentType);
                 chrome.runtime.sendMessage({
-                    type: 'gravity:download-request',
-                    payload: { url: v.url, filename: name, tabId: tab.id }
+                    type: 'gravity:download-xhr',
+                    payload: { url: v.url, filename: name, tabId: tab.id, referer: tab.url }
+                }).then(res => {
+                    if (!res || !res.success) {
+                        // Fallback to regular request if XHR fails
+                        chrome.runtime.sendMessage({
+                            type: 'gravity:download-request',
+                            payload: { url: v.url, filename: name, tabId: tab.id, referer: tab.url }
+                        });
+                    }
                 });
                 btn.textContent = '✓';
                 setTimeout(() => window.close(), 600);
@@ -229,8 +237,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const best = sorted[0];
                 btn.textContent = 'DOWNLOADING…';
                 chrome.runtime.sendMessage({
-                    type: 'gravity:download-request',
-                    payload: { url: best.url, filename: inferFilename(best.url, best.contentType), tabId: tab.id }
+                    type: 'gravity:download-xhr',
+                    payload: { url: best.url, filename: inferFilename(best.url, best.contentType), tabId: tab.id, referer: tab.url }
+                }).then(res => {
+                    if (!res || !res.success) {
+                        chrome.runtime.sendMessage({
+                            type: 'gravity:download-request',
+                            payload: { url: best.url, filename: inferFilename(best.url, best.contentType), tabId: tab.id, referer: tab.url }
+                        });
+                    }
                 });
                 setTimeout(() => window.close(), 600);
             },
@@ -252,8 +267,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             onDownload: (a, btn) => {
                 btn.textContent = '…';
                 chrome.runtime.sendMessage({
-                    type: 'gravity:download-request',
-                    payload: { url: a.url, filename: inferFilename(a.url, a.contentType), tabId: tab.id }
+                    type: 'gravity:download-xhr',
+                    payload: { url: a.url, filename: inferFilename(a.url, a.contentType), tabId: tab.id, referer: tab.url }
+                }).then(res => {
+                    if (!res || !res.success) {
+                        chrome.runtime.sendMessage({
+                            type: 'gravity:download-request',
+                            payload: { url: a.url, filename: inferFilename(a.url, a.contentType), tabId: tab.id, referer: tab.url }
+                        });
+                    }
                 });
                 btn.textContent = '✓';
                 setTimeout(() => window.close(), 600);
@@ -262,8 +284,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const best = sorted[0];
                 btn.textContent = 'DOWNLOADING…';
                 chrome.runtime.sendMessage({
-                    type: 'gravity:download-request',
-                    payload: { url: best.url, filename: inferFilename(best.url, best.contentType), tabId: tab.id }
+                    type: 'gravity:download-xhr',
+                    payload: { url: best.url, filename: inferFilename(best.url, best.contentType), tabId: tab.id, referer: tab.url }
+                }).then(res => {
+                    if (!res || !res.success) {
+                        chrome.runtime.sendMessage({
+                            type: 'gravity:download-request',
+                            payload: { url: best.url, filename: inferFilename(best.url, best.contentType), tabId: tab.id, referer: tab.url }
+                        });
+                    }
                 });
                 setTimeout(() => window.close(), 600);
             },
@@ -290,7 +319,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         url: s.url,
                         filename: `Gravity_Stream_${Date.now()}.${ext}`,
                         streamType: s.url.includes('.m3u8') ? 'hls' : 'dash',
-                        tabId: tab.id
+                        tabId: tab.id,
+                        referer: tab.url
                     }
                 });
                 btn.textContent = '✓';
@@ -306,7 +336,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         url: best.url,
                         filename: `Gravity_Stream_${Date.now()}.${ext}`,
                         streamType: best.url.includes('.m3u8') ? 'hls' : 'dash',
-                        tabId: tab.id
+                        tabId: tab.id,
+                        referer: tab.url
                     }
                 });
                 setTimeout(() => window.close(), 600);
@@ -332,7 +363,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btn.textContent = '…';
                 chrome.runtime.sendMessage({
                     type: 'gravity:download-request',
-                    payload: { url: img.url, filename: inferFilename(img.url, img.contentType) }
+                    payload: { url: img.url, filename: inferFilename(img.url, img.contentType), referer: tab.url }
                 });
                 btn.textContent = '✓';
             },
@@ -340,7 +371,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 sorted.forEach(img => {
                     chrome.runtime.sendMessage({
                         type: 'gravity:download-request',
-                        payload: { url: img.url, filename: inferFilename(img.url, img.contentType) }
+                        payload: { url: img.url, filename: inferFilename(img.url, img.contentType), referer: tab.url }
                     });
                 });
                 btn.textContent = `✓ ${sorted.length} QUEUED`;

@@ -1,0 +1,326 @@
+{
+  "appDesc": {
+    "message": "Baixar vídeos da Web."
+  },
+  "restore_purchase_button": {
+    "message": "Restaurar compra"
+  },
+  "get_premium_button": {
+    "message": "Obter premium"
+  },
+  "back": {
+    "message": "Voltar"
+  },
+  "waiting_for_media": {
+    "message": "Esperando pela mídia…"
+  },
+  "nomedia_title": {
+    "message": "Não consegue ver a mídia que está procurando?"
+  },
+  "nomedia_description": {
+    "message": "Inicie o vídeo (e pule os anúncios, se houver) para ajudar a detectar a mídia. Ou relate a mídia ausente. "
+  },
+  "nomedia_reload_button": {
+    "message": "Forçar detecção"
+  },
+  "nomedia_reload_button_tooltip": {
+    "message": "Forçar o recarregamento da página (limpar cookies)"
+  },
+  "show_nomedia_button": {
+    "message": "Sem vídeo?"
+  },
+  "show_nomedia_button_tooltip": {
+    "message": "Clique aqui se você não conseguir encontrar seu vídeo"
+  },
+  "setting_button_tooltip": {
+    "message": "Configurações"
+  },
+  "history_button_tooltip": {
+    "message": "Mostrar histórico de downloads"
+  },
+  "complete_title": {
+    "message": "Concluido"
+  },
+  "translate_button_tooltip": {
+    "message": "Ajude a traduzir VDH"
+  },
+  "open_source_tab_button_tooltip": {
+    "message": "Guia de código aberto"
+  },
+  "retry_download_button_tooltip": {
+    "message": "Repetir baixamento"
+  },
+  "delete_file_button_tooltip": {
+    "message": "Excluir arquivo"
+  },
+  "download_directory_button_tooltip": {
+    "message": "Mostrar pasta de download"
+  },
+  "clear_downloaded_tooltip": {
+    "message": "Apagar lista de Downloads "
+  },
+  "show_in_popup_button_tooltip": {
+    "message": "Mostrar em pop-up"
+  },
+  "show_in_sidebar_button_tooltip": {
+    "message": "Mostrar na barra lateral"
+  },
+  "video_not_playing_button_tooltip": {
+    "message": "O vídeo não está sendo reproduzido?"
+  },
+  "play": {
+    "message": "Reproduzir"
+  },
+  "warn_drm_tooltip": {
+    "message": "DRM detectado"
+  },
+  "version_title": {
+    "message": "Versão"
+  },
+  "account_title": {
+    "message": "Conta"
+  },
+  "one_hundred_downloads_title": {
+    "message": "Você baixou 100 vídeos!"
+  },
+  "leave_review_description": {
+    "message": "Esperamos que você esteja gostando do Vídeo DownloadHelper :) Você se importaria de escrever uma boa crítica no site do complemento?"
+  },
+  "leave_review_button": {
+    "message": "Deixe um comentário"
+  },
+  "account_status": {
+    "message": "Estado"
+  },
+  "account_status_premium": {
+    "message": "Premium ($1)"
+  },
+  "free_account": {
+    "message": "Plano gratuito"
+  },
+  "copy_to_clipboard": {
+    "message": "Copiar informações para a área de transferência"
+  },
+  "my_account_button": {
+    "message": "Minha conta"
+  },
+  "download_title": {
+    "message": "Baixamentos"
+  },
+  "show_notification": {
+    "message": "Mostrar notificação quando o download for concluído"
+  },
+  "max_parallel_downloads": {
+    "message": "Máximo de downloads simultâneos"
+  },
+  "saveas_detected_warning": {
+    "message": " Detectamos que seu navegador mostra uma caixa de diálogo \"Salvar como\" quando o download é concluído. Recomendamos desativar essa opção nas configurações do seu navegador"
+  },
+  "change_saveas_setting": {
+    "message": "Alterar configuração"
+  },
+  "private_browsing_title": {
+    "message": "Navegação privada"
+  },
+  "private_browsing_warning": {
+    "message": "Video DownloadHelper não está habilitado em janelas privadas/anônimas. Você precisa ativar essa opção manualmente (isso não é obrigatório)."
+  },
+  "private_browsing_notifications": {
+    "message": "Mostrar notificação para baixamentos privados"
+  },
+  "private_browsing_button": {
+    "message": "Alterar a configuração de navegação privada"
+  },
+  "prefer_original_audio": {
+    "message": "Prefira áudio original"
+  },
+  "settings_history_title": {
+    "message": "Histórico"
+  },
+  "transient_history_description": {
+    "message": "Mostrar downloads completos no painel"
+  },
+  "history_limit": {
+    "message": "Esqueça o histórico de downloads após X dias"
+  },
+  "appearance_title": {
+    "message": "Aparência"
+  },
+  "theme_title": {
+    "message": "Tema"
+  },
+  "theme_light": {
+    "message": "claro"
+  },
+  "theme_dark": {
+    "message": "escuro"
+  },
+  "theme_system": {
+    "message": "sistema"
+  },
+  "popup_size_title": {
+    "message": "Tamanho da janela"
+  },
+  "popup_size_small": {
+    "message": "Pequeno"
+  },
+  "popup_size_medium": {
+    "message": "Médio"
+  },
+  "popup_size_big": {
+    "message": "Grande"
+  },
+  "panel_position_title": {
+    "message": "Posição do painel"
+  },
+  "use_popup": {
+    "message": "Mostrar em pop-up"
+  },
+  "use_sidebar": {
+    "message": "Mostrar na barra lateral"
+  },
+  "behavior_title": {
+    "message": "Comportamento"
+  },
+  "show_in_context_menu": {
+    "message": "Comandos de acesso a partir do botão direito na página"
+  },
+  "restart_addon": {
+    "message": "Recarregar extensão"
+  },
+  "reset_settings": {
+    "message": "Redefinir configurações"
+  },
+  "history_title": {
+    "message": "Histórico de Downloads"
+  },
+  "history_warning": {
+    "message": "Não registramos seu histórico de downloads. Você quer que o Video DownloadHelper se lembre do seu histórico de downloads?"
+  },
+  "history_warning_2": {
+    "message": "Não se preocupe, tudo fica na sua máquina. Valorizamos sua privacidade."
+  },
+  "enable_history": {
+    "message": "Lembrar histórico"
+  },
+  "clear_history": {
+    "message": "Limpar histórico"
+  },
+  "disable_history": {
+    "message": "Não lembrar meu histórico"
+  },
+  "no_downloads_yet": {
+    "message": "Nenhuma entrada"
+  },
+  "download_failed": {
+    "message": "Download falhou"
+  },
+  "download_failed_description": {
+    "message": "Infelizmente, falhamos no download dessa mídia específica. Tentamos oferecer suporte ao maior número possível de sites, então ajudaria muito se você pudesse relatar esse erro!"
+  },
+  "download_interrupted": {
+    "message": "Download interrompido"
+  },
+  "download_interrupted_description": {
+    "message": "onseguimos baixar seu arquivo, mas houve problemas de rede, então o arquivo pode ser mais curto do que o esperado. Tentamos oferecer suporte ao maior número possível de sites, então ajudaria muito se você pudesse relatar esse problema (é anônimo!)."
+  },
+  "download_with_drm_failed_description": {
+    "message": "Algo não funcionou. E achamos que este vídeo tem DRM. Não oferecemos suporte a vídeos com DRM."
+  },
+  "no_youtube": {
+    "message": "Baixamento do youtube não permitido"
+  },
+  "no_youtube_description": {
+    "message": "Infelizmente, a loja do navegador Chrome não permite realizar transferências de vídeos, sendo assim não podemos incluir esta função na versão destinada ao Chrome."
+  },
+  "premium_required": {
+    "message": "É necessário status Premium"
+  },
+  "premium_yt_required_description": {
+    "message": "Sem o estado Premium, um baixamento do YouTube só pode ser realizado 2 horas oapós anterior"
+  },
+  "premium_hls_required_description": {
+    "message": "Sem um status Premium, um download HLS somente pode ser realizado 2 horas após anterior."
+  },
+  "youtube_too_many_downloads": {
+    "message": "Ops, o YouTube parece estar bloqueado"
+  },
+  "youtube_too_many_downloads_description": {
+    "message": "O YouTube às vezes limita quantos vídeos podem ser solicitados. Infelizmente, não há nada que possamos fazer a respeito. Tente novamente mais tarde."
+  },
+  "stop": {
+    "message": "Parar"
+  },
+  "cancel": {
+    "message": "Cancelar"
+  },
+  "copy_url": {
+    "message": "Copiar URL"
+  },
+  "always_copy_url": {
+    "message": "Copiar sempre a URL"
+  },
+  "download_button": {
+    "message": "Baixar"
+  },
+  "download_as_button_and_menu": {
+    "message": "Baixar Como…"
+  },
+  "rename_short": {
+    "message": "Renomear"
+  },
+  "download_audio_button": {
+    "message": "Áudio"
+  },
+  "download_audio_and_video_menu": {
+    "message": "Baixar áudio e vídeo"
+  },
+  "download_audio_only_menu": {
+    "message": "Baixar Áudio"
+  },
+  "audio_only_for_this_website": {
+    "message": "Sempre áudio apenas para este site"
+  },
+  "details": {
+    "message": "Detalhes"
+  },
+  "report": {
+    "message": "Reportar"
+  },
+  "reporting": {
+    "message": "Relatando…"
+  },
+  "reported_thankyou": {
+    "message": "Obrigado!"
+  },
+  "not_playing_title": {
+    "message": "O vídeo não está sendo reproduzido?"
+  },
+  "not_playing_broken_title": {
+    "message": "Áudio ou vídeo quebrado?"
+  },
+  "not_playing_broken_description": {
+    "message": "Relatar a mídia em falha. Faremos o possível para descobrir por que falhou (enviamos o URL do vídeo anonimamente - não rastreamos você!)"
+  },
+  "not_playing_broken_solution_title": {
+    "message": "Experimente um player de vídeo moderno"
+  },
+  "not_playing_broken_solution_windows_1": {
+    "message": "Recomendamos o VLC:"
+  },
+  "not_playing_broken_solution_mac_1": {
+    "message": "Recomendamos o IINA:"
+  },
+  "not_playing_broken_solution_2": {
+    "message": "é moderno, seguro e de código aberto."
+  },
+  "not_playing_default_player": {
+    "message": "Certifique-se de que seu reprodutor de vídeo esteja definido como seu reprodutor de vídeo padrão do sistema"
+  },
+  "not_playing_default_player_solution_windows": {
+    "message": "No \"Painel de Controle\" do Windows, clique em \"Programas Padrão\" e altere os programas padrão para o seu reprodutor."
+  },
+  "not_playing_default_player_solution_mac": {
+    "message": "Abra o diretório de baixamentos e clique com o botão direito do mouse no arquivo de vídeo. Clique em 'Obter informações'. Na seção 'Abrir com', selecione IINA. Clique no botão 'Alterar tudo'."
+  }
+}
