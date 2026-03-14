@@ -274,7 +274,7 @@ chrome.runtime.onMessage.addListener((request) => {
             if (mediaEl) {
                 const result = extractUrlFromElement(mediaEl);
                 if (result) {
-                    triggerDownload(result, `Gravity_context_${Date.now()}`);
+                    triggerDownload(result, `Gravity_context_${Date.now()}`, mediaEl.tagName);
                 } else {
                     showToast('No downloadable media found here. Try Pick Mode instead.');
                 }
@@ -623,8 +623,8 @@ function extractAudioUrl(audio) {
 }
 
 // Handles the result of extractUrlFromElement, including complex descriptors
-async function triggerDownload(result, fallbackFilename) {
-    console.log(`[Gravity UI] Triggering download for:`, result, fallbackFilename);
+async function triggerDownload(result, fallbackFilename, tagContext) {
+    console.log(`[Gravity UI] Triggering download for:`, result, fallbackFilename, tagContext);
     if (!result) return;
 
     // Detect if we are inside an iframe to get the correct referer
@@ -636,24 +636,19 @@ async function triggerDownload(result, fallbackFilename) {
     } catch (e) { }
 
 
-    const elementType = (typeof result === 'object' && result.elementType) ? result.elementType : 'video';
-
-    // 1. Try VDH intercept strategy first: use memory from gravity-early.js if available
-    chrome.runtime.sendMessage({
-        type: 'gravity:download-intercepted',
-        payload: { elementType, referer }
-    }, (response) => {
-        if (chrome.runtime.lastError) {
-            console.warn('[Gravity UI] Intercept failed or SW unavailable:', chrome.runtime.lastError.message);
+    let elementType = 'video';
+    if (typeof result === 'object' && result.elementType) {
+        elementType = result.elementType;
+    } else if (tagContext) {
+        const tag = tagContext.toUpperCase();
+        if (tag === 'IMG' || tag === 'PICTURE' || tag === 'CANVAS' || tag === 'SVG') {
+            elementType = 'image';
+        } else if (tag === 'AUDIO') {
+            elementType = 'audio';
         }
+    }
 
-        if (response && response.success) {
-            console.log('[Gravity UI] Downloaded successfully via captured memory intercept');
-            return;
-        }
-
-        console.log('[Gravity UI] Memory intercept inapplicable/failed, falling back to network methods');
-
+    const doFallbackDownload = () => {
         if (typeof result === 'string') {
             if (result.startsWith('chrome-extension://')) return;
 
@@ -687,6 +682,31 @@ async function triggerDownload(result, fallbackFilename) {
                 }
             });
         }
+    };
+
+    if (elementType === 'image' || typeof result === 'string') {
+        // Images and plain string URLs (like .mp4) do not need the memory intercept hook
+        // memory intercept is only for blob URLs and obfuscated streams
+        doFallbackDownload();
+        return;
+    }
+
+    // 1. Try VDH intercept strategy first for blobs/streams: use memory from gravity-early.js if available
+    chrome.runtime.sendMessage({
+        type: 'gravity:download-intercepted',
+        payload: { elementType, referer }
+    }, (response) => {
+        if (chrome.runtime.lastError) {
+            console.warn('[Gravity UI] Intercept failed or SW unavailable:', chrome.runtime.lastError.message);
+        }
+
+        if (response && response.success) {
+            console.log('[Gravity UI] Downloaded successfully via captured memory intercept');
+            return;
+        }
+
+        console.log('[Gravity UI] Memory intercept inapplicable/failed, falling back to network methods');
+        doFallbackDownload();
     });
 }
 
@@ -886,7 +906,7 @@ function handlePickClick(e) {
                     disablePickMode();
                 }, 300);
             }
-            triggerDownload(result, filename);
+            triggerDownload(result, filename, hoveredElement.tagName);
         } else {
             showToast(
                 tag === 'video' || tag === 'audio'
