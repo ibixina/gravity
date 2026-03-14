@@ -72,19 +72,19 @@ async function getCapturedTracksSummary(tabId) {
     }
 }
 
-async function downloadViaCapturedData(tabId, preferVideo = true) {
-    console.log('[Gravity SW] Attempting download via captured data for tab', tabId);
+async function downloadViaCapturedData(tabId, preferVideo = true, targetBlobUrl = null) {
+    console.log('[Gravity SW] Attempting download via captured data for tab', tabId, 'blobUrl:', targetBlobUrl);
 
     try {
         const results = await chrome.scripting.executeScript({
             target: { tabId, allFrames: true },
-            func: (prefVideo) => {
+            func: (prefVideo, blobUrl) => {
                 if (window.__gravityDownloadCapturedVideo) {
-                    return window.__gravityDownloadCapturedVideo(prefVideo);
+                    return window.__gravityDownloadCapturedVideo(prefVideo, blobUrl);
                 }
                 return { success: false, error: 'Gravity capture hooks not loaded. Refresh the page.' };
             },
-            args: [preferVideo],
+            args: [preferVideo, targetBlobUrl],
             world: 'MAIN'
         });
 
@@ -126,14 +126,14 @@ async function getYouTubeMetadata(tabId) {
 // ── Shared: Try downloading from captured data ──────────────────────────────
 // This pattern was duplicated 4x in the old message-handler.js.
 
-async function tryDownloadFromCapturedData(tabId, preferVideo = true) {
+async function tryDownloadFromCapturedData(tabId, preferVideo = true, targetBlobUrl = null) {
     const capturedTracks = await getCapturedTracksSummary(tabId);
     if (capturedTracks.length === 0) return null;
 
     const totalSize = capturedTracks.reduce((sum, t) => sum + t.totalSize, 0);
     if (totalSize <= 50000) return null; // Less than 50KB
 
-    const result = await downloadViaCapturedData(tabId, preferVideo);
+    const result = await downloadViaCapturedData(tabId, preferVideo, targetBlobUrl);
     if (result.success) {
         await notifyTab(tabId, 'success',
             `Downloading: ${result.filename} (${(result.size / 1024 / 1024).toFixed(1)}MB)`);
@@ -358,6 +358,19 @@ export async function handleDownloadNetworkMedia(payload, sender, sendResponse) 
         return;
     }
 
+    // Extract blob URL for filtering captured data to the correct video
+    const targetBlobUrl = payload?.blobUrl || null;
+
+    // Extract a video ID hint from the poster URL (e.g. Twitter's amplify_video_thumb/{ID}/...)
+    let videoIdHint = null;
+    if (payload?.posterUrl) {
+        const m = payload.posterUrl.match(/\/(\d{15,25})\//);
+        if (m) {
+            videoIdHint = m[1];
+            console.log(`[Gravity SW] Video ID hint from poster: ${videoIdHint}`);
+        }
+    }
+
     // Strategy 1: YouTube auto-buffer
     const ytResult = await tryYouTubeAutoBuffer(tabId);
     if (ytResult) {
@@ -365,14 +378,14 @@ export async function handleDownloadNetworkMedia(payload, sender, sendResponse) 
         return;
     }
 
-    // Strategy 2: Captured data
-    const capturedResult = await tryDownloadFromCapturedData(tabId, elementType === 'video');
+    // Strategy 2: Captured data (with blobUrl filtering for correct video)
+    const capturedResult = await tryDownloadFromCapturedData(tabId, elementType === 'video', targetBlobUrl);
     if (capturedResult) {
         sendResponse?.({ success: true });
         return;
     }
 
-    // Strategy 3: Network monitor URLs
+    // Network monitor URLs
     const store = getTabMedia(tabId);
     const rawList = elementType === 'audio' ? store.audio : store.video;
 
@@ -386,9 +399,22 @@ export async function handleDownloadNetworkMedia(payload, sender, sendResponse) 
     // Full-file URLs (non-DASH)
     const fullFileUrls = rawList.filter(e => !e.isDashSegment);
     if (fullFileUrls.length > 0) {
-        const best = fullFileUrls.reduce(
-            (a, b) => ((b.size || 0) > (a.size || 0) ? b : a), fullFileUrls[0]
-        );
+        let best;
+        // If we have a video ID hint, prefer URLs containing that ID
+        if (videoIdHint) {
+            const matching = fullFileUrls.filter(e => e.url.includes(videoIdHint));
+            if (matching.length > 0) {
+                best = matching.reduce(
+                    (a, b) => ((b.size || 0) > (a.size || 0) ? b : a), matching[0]
+                );
+                console.log(`[Gravity SW] Matched video by ID hint: ${best.url.slice(0, 120)}`);
+            }
+        }
+        if (!best) {
+            best = fullFileUrls.reduce(
+                (a, b) => ((b.size || 0) > (a.size || 0) ? b : a), fullFileUrls[0]
+            );
+        }
         const ext = mimeToExt(best.contentType) || (elementType === 'audio' ? 'mp3' : 'mp4');
         const filename = `Gravity_${elementType}_${Date.now()}.${ext}`;
         try {

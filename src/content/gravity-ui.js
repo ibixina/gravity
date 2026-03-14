@@ -578,11 +578,12 @@ function extractVideoUrl(video) {
 
     // All sources are blob: URLs — defer to the network monitor
     const blobUrl = currentSrc || src;
+    const posterUrl = video.poster || video.getAttribute('poster') || null;
     if (blobUrl && blobUrl.startsWith('blob:')) {
-        return { type: 'blob', blobUrl, elementType: 'video' };
+        return { type: 'blob', blobUrl, elementType: 'video', posterUrl };
     }
 
-    return { type: 'need-network-monitor', elementType: 'video' };
+    return { type: 'need-network-monitor', elementType: 'video', posterUrl };
 }
 
 
@@ -675,7 +676,12 @@ async function triggerDownload(result, fallbackFilename, tagContext) {
         if (result.type === 'blob' || result.type === 'need-network-monitor') {
             chrome.runtime.sendMessage({
                 type: 'gravity:download-network-media',
-                payload: { elementType: result.elementType || 'video', referer }
+                payload: {
+                    elementType: result.elementType || 'video',
+                    referer,
+                    posterUrl: result.posterUrl || null,
+                    blobUrl: result.blobUrl || null
+                }
             }, (netResponse) => {
                 if (chrome.runtime.lastError) {
                     showToast('Could not reach the background script. Try reloading the extension.', 'error');
@@ -692,9 +698,11 @@ async function triggerDownload(result, fallbackFilename, tagContext) {
     }
 
     // 1. Try VDH intercept strategy first for blobs/streams: use memory from gravity-early.js if available
+    // Pass the blobUrl so the intercept can filter to the correct video's tracks
+    const blobUrl = (typeof result === 'object' && result.blobUrl) ? result.blobUrl : null;
     chrome.runtime.sendMessage({
         type: 'gravity:download-intercepted',
-        payload: { elementType, referer }
+        payload: { elementType, referer, blobUrl }
     }, (response) => {
         if (chrome.runtime.lastError) {
             console.warn('[Gravity UI] Intercept failed or SW unavailable:', chrome.runtime.lastError.message);

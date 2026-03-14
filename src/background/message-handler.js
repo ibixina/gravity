@@ -47,15 +47,16 @@ export function setupMessageHandling() {
             // ── Download intercepted segments directly via MAIN world ──
             case MessageType.DOWNLOAD_INTERCEPTED:
                 if (sender.tab) {
+                    const targetBlobUrl = message.payload?.blobUrl || null;
                     chrome.scripting.executeScript({
                         target: { tabId: sender.tab.id, allFrames: true },
-                        func: (prefVideo) => {
+                        func: (prefVideo, blobUrl) => {
                             if (window.__gravityDownloadCapturedVideo) {
-                                return window.__gravityDownloadCapturedVideo(prefVideo);
+                                return window.__gravityDownloadCapturedVideo(prefVideo, blobUrl);
                             }
                             return { success: false, error: 'No hooks' };
                         },
-                        args: [message.payload?.elementType !== 'audio'],
+                        args: [message.payload?.elementType !== 'audio', targetBlobUrl],
                         world: 'MAIN'
                     }).then(results => {
                         const res = results?.map(r => r.result).find(r => r && r.success);
