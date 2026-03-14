@@ -37,6 +37,14 @@ class OverlayBypass {
         for (const el of elements) {
             // ── Standard media elements ───────────────────────────────────
             if (el.tagName === 'IMG' || el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
+                // Verify the element's visual bounds actually contain the cursor.
+                // Overlapping containers (e.g. watermark spans) can cause
+                // elementsFromPoint to return images not visually under the cursor.
+                const rect = el.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0 &&
+                    (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom)) {
+                    continue;
+                }
                 console.log(`[Gravity Selection] Found standard media tag: <${el.tagName}>`, el);
                 return el;
             }
@@ -102,12 +110,14 @@ class OverlayBypass {
                 }
 
                 // Check direct children and shadow root for media
-                const directMedia = ancestor.querySelector('video, audio, img[src], picture');
+                // Use querySelectorAll + bounding rect to pick the correct one
+                // when multiple media elements exist (e.g. forum posts with several images)
+                const directMedia = OverlayBypass._findMediaAtPoint(ancestor, x, y);
                 if (directMedia) return directMedia;
 
                 const shadowRoot = ancestor.shadowRoot || ancestor.__gravityShadowRoot;
                 if (shadowRoot) {
-                    const shadowMedia = shadowRoot.querySelector('video, audio, img[src], picture');
+                    const shadowMedia = OverlayBypass._findMediaAtPoint(shadowRoot, x, y);
                     if (shadowMedia) return shadowMedia;
                     // Also check for nested custom players inside shadow DOM
                     for (const tag of OverlayBypass.CUSTOM_PLAYER_TAGS) {
@@ -123,6 +133,25 @@ class OverlayBypass {
 
         console.warn(`[Gravity Selection] No media found at (${x}, ${y}) after probing ${elements.length} elements and ancestors.`);
         return null;
+    }
+
+    /**
+     * Find the media element within a root whose bounding rect contains (x, y).
+     * Falls back to the first match if none contain the cursor.
+     */
+    static _findMediaAtPoint(root, x, y) {
+        const selector = 'video, audio, img[src], picture';
+        const all = root.querySelectorAll(selector);
+        if (all.length === 0) return null;
+        if (all.length === 1) return all[0];
+        for (const el of all) {
+            const r = el.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0 &&
+                x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+                return el;
+            }
+        }
+        return all[0];
     }
 
     /**

@@ -115,7 +115,10 @@ export async function handleDownloadRequest(payload, sender, sendResponse) {
 
         if (url.startsWith('data:')) {
             const timestamp = getTimestamp();
-            let finalName = filename || `Gravity_media_${timestamp}`;
+            let finalName = filename;
+            if (!finalName || String(finalName).toLowerCase() === 'undefined' || String(finalName).toLowerCase() === 'null' || finalName === '[object Object]') {
+                finalName = `gravity_${timestamp}`;
+            }
             const hasExt = /\.[a-zA-Z0-9]{2,5}$/.test(finalName);
             if (!hasExt) {
                 const mimeMatch = url.match(/^data:([^;]+);/);
@@ -136,7 +139,10 @@ export async function handleDownloadRequest(payload, sender, sendResponse) {
             return;
         }
 
-        const fname = filename || inferFilename(url, '');
+        let fname = filename;
+        if (!fname || String(fname).toLowerCase() === 'undefined' || String(fname).toLowerCase() === 'null' || fname === '[object Object]') {
+            fname = inferFilename(url, '');
+        }
 
         // ── Auto-Detect Hotlink Traps ──
         // Clear any existing DNR rules so our probe doesn't get masked by previous spoofing.
@@ -167,6 +173,7 @@ export async function handleDownloadRequest(payload, sender, sendResponse) {
 
         if (needsOffscreenBypass) {
             console.log(`[Gravity SW] Forcing Offscreen Download to bypass native Chrome limitations for: ${url}`);
+            await setupDownloadHeaders(url, tabId, referer);
             try {
                 const dlId = await downloadViaOffscreenDocument(url, tabId, fname, referer);
                 sendResponse?.({ success: true, downloadId: dlId });
@@ -223,7 +230,10 @@ export async function handleDownloadStream(payload, sender, sendResponse) {
         console.log(`[Gravity SW] Stream download requested: ${url} (${streamType})`);
         await setupDownloadHeaders(url, tabId);
 
-        const fname = filename || `Gravity_Stream_${getTimestamp()}.ts`;
+        let fname = filename;
+        if (!fname || String(fname).toLowerCase() === 'undefined' || String(fname).toLowerCase() === 'null' || fname === '[object Object]') {
+            fname = `gravity_${getTimestamp()}.ts`;
+        }
         const downloadId = await downloadStreamViaOffscreenDocument(url, tabId, fname, streamType);
         console.log(`[Gravity SW] Stream download queued with ID: ${downloadId}`);
 

@@ -696,10 +696,17 @@ async function triggerDownload(result, fallbackFilename) {
 let pickModeActive = false;
 let hoveredElement = null;
 
+function handlePickKeydown(e) {
+    if (e.key === 'Escape' && pickModeActive) {
+        disablePickMode();
+    }
+}
+
 function enablePickMode() {
     document.body.style.cursor = 'crosshair';
     document.addEventListener('mousemove', handlePickMove, true);
     document.addEventListener('click', handlePickClick, true);
+    document.addEventListener('keydown', handlePickKeydown, true);
 
     // Add visual outline container if not exists
     if (!document.getElementById('gravity-pick-highlight')) {
@@ -731,6 +738,25 @@ function enablePickMode() {
 
         document.documentElement.appendChild(highlight);
     }
+
+    if (!document.getElementById('gravity-pick-preview')) {
+        const preview = document.createElement('div');
+        preview.id = 'gravity-pick-preview';
+        preview.style.position = 'fixed';
+        preview.style.pointerEvents = 'none';
+        preview.style.zIndex = '2147483647';
+        preview.style.border = '2px solid #000';
+        preview.style.backgroundColor = '#fff';
+        preview.style.boxShadow = '4px 4px 0px rgba(0,0,0,1)';
+        preview.style.display = 'none';
+        preview.style.maxWidth = '250px';
+        preview.style.maxHeight = '250px';
+        preview.style.overflow = 'hidden';
+        preview.style.padding = '4px';
+        preview.style.alignItems = 'center';
+        preview.style.justifyContent = 'center';
+        document.documentElement.appendChild(preview);
+    }
 }
 
 function disablePickMode() {
@@ -738,9 +764,17 @@ function disablePickMode() {
     document.body.style.cursor = '';
     document.removeEventListener('mousemove', handlePickMove, true);
     document.removeEventListener('click', handlePickClick, true);
+    document.removeEventListener('keydown', handlePickKeydown, true);
 
     const highlight = document.getElementById('gravity-pick-highlight');
     if (highlight) highlight.style.display = 'none';
+
+    const preview = document.getElementById('gravity-pick-preview');
+    if (preview) {
+        preview.style.display = 'none';
+        preview.innerHTML = '';
+    }
+
     hoveredElement = null;
 }
 
@@ -753,9 +787,55 @@ function handlePickMove(e) {
 
     const highlight = document.getElementById('gravity-pick-highlight');
     const label = document.getElementById('gravity-pick-label');
+    const preview = document.getElementById('gravity-pick-preview');
 
     if (mediaEl) {
-        hoveredElement = mediaEl;
+        if (hoveredElement !== mediaEl) {
+            hoveredElement = mediaEl;
+
+            const tagLabels = {
+                'IMG': 'IMG', 'VIDEO': 'VIDEO', 'AUDIO': 'AUDIO',
+                'SVG': 'SVG', 'CANVAS': 'CANVAS', 'PICTURE': 'IMG',
+                'SHREDDIT-PLAYER': 'VIDEO', 'AMP-VIDEO': 'VIDEO',
+                'LITE-YOUTUBE': 'VIDEO', 'MEDIA-PLAYER': 'VIDEO',
+                'VIDEO-PLAYER': 'VIDEO', 'IFRAME': 'IFRAME',
+                'EMBED': 'EMBED', 'OBJECT': 'OBJECT',
+            };
+            const tagName = mediaEl.tagName || '';
+            const autoLabel = tagName.includes('PLAYER') ? 'VIDEO' : 'CSS-BG';
+            const finalLabel = tagLabels[tagName] || autoLabel;
+            label.textContent = finalLabel;
+
+            const result = extractUrlFromElement(mediaEl);
+            let srcUrl = typeof result === 'string' ? result : (result?.blobUrl || null);
+
+            if (preview) {
+                preview.innerHTML = '';
+                if (srcUrl && !srcUrl.startsWith('gravity-network-monitor')) {
+                    if (finalLabel === 'VIDEO') {
+                        const vid = document.createElement('video');
+                        vid.src = srcUrl;
+                        vid.autoplay = true; vid.muted = true; vid.loop = true;
+                        vid.style.cssText = 'max-width: 240px; max-height: 240px; object-fit: contain;';
+                        preview.appendChild(vid);
+                    } else if (finalLabel === 'AUDIO') {
+                        const aud = document.createElement('div');
+                        aud.style.cssText = 'padding: 10px; font-weight: bold; font-family: Courier New;';
+                        aud.textContent = 'AUDIO FOUND';
+                        preview.appendChild(aud);
+                    } else {
+                        const img = document.createElement('img');
+                        img.src = srcUrl;
+                        img.style.cssText = 'max-width: 240px; max-height: 240px; object-fit: contain;';
+                        preview.appendChild(img);
+                    }
+                    preview.style.display = 'flex';
+                } else {
+                    preview.style.display = 'none';
+                }
+            }
+        }
+
         const rect = mediaEl.getBoundingClientRect();
         highlight.style.top = rect.top + 'px';
         highlight.style.left = rect.left + 'px';
@@ -763,21 +843,24 @@ function handlePickMove(e) {
         highlight.style.height = rect.height + 'px';
         highlight.style.display = 'block';
 
-        const tagLabels = {
-            'IMG': 'IMG', 'VIDEO': 'VIDEO', 'AUDIO': 'AUDIO',
-            'SVG': 'SVG', 'CANVAS': 'CANVAS', 'PICTURE': 'IMG',
-            'SHREDDIT-PLAYER': 'VIDEO', 'AMP-VIDEO': 'VIDEO',
-            'LITE-YOUTUBE': 'VIDEO', 'MEDIA-PLAYER': 'VIDEO',
-            'VIDEO-PLAYER': 'VIDEO', 'IFRAME': 'IFRAME',
-            'EMBED': 'EMBED', 'OBJECT': 'OBJECT',
-        };
-        const tagName = mediaEl.tagName || '';
-        // Recognize any element with PLAYER in its tag as VIDEO
-        const autoLabel = tagName.includes('PLAYER') ? 'VIDEO' : 'CSS-BG';
-        label.textContent = tagLabels[tagName] || autoLabel;
+        if (preview && preview.style.display !== 'none') {
+            let px = e.clientX + 15;
+            let py = e.clientY + 15;
+
+            // Adjust to keep the preview box on-screen
+            if (px + 260 > window.innerWidth) px = e.clientX - 260 - 15;
+            if (py + 260 > window.innerHeight) py = e.clientY - 260 - 15;
+
+            preview.style.left = px + 'px';
+            preview.style.top = py + 'px';
+        }
     } else {
         hoveredElement = null;
         highlight.style.display = 'none';
+        if (preview) {
+            preview.style.display = 'none';
+            preview.innerHTML = '';
+        }
     }
 }
 

@@ -80,6 +80,9 @@ export function inferFilename(url, mimeType, contentDisposition) {
         // Walk backwards to find a segment that looks like a filename
         for (let i = pathParts.length - 1; i >= 0; i--) {
             const part = decodeURIComponent(pathParts[i]);
+            if (part.toLowerCase() === 'undefined' || part.toLowerCase() === 'null') {
+                continue;
+            }
             if (part.includes('.') && part.length > 3 && part.length < 120) {
                 const popExt = part.split('.').pop().toLowerCase();
                 if (['php', 'asp', 'aspx', 'jsp', 'html', 'htm'].includes(popExt)) continue;
@@ -99,7 +102,7 @@ export function inferFilename(url, mimeType, contentDisposition) {
     if (namePart) return `Gravity_${namePart}_${timestamp}.${ext}`;
 
     // 3. Fall back to MIME-based name with timestamp
-    return `Gravity_media_${timestamp}.${ext}`;
+    return `gravity_${timestamp}.${ext}`;
 }
 
 /**
