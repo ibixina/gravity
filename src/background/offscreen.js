@@ -71,6 +71,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 const blobUrl = URL.createObjectURL(blob);
                 console.log(`[Gravity Offscreen] Blob created for ${filename}: ${blob.size} bytes`, blobUrl);
 
+                // Extract first 64 bytes for magic byte detection
+                const headerBytes = chunks.length > 0 ? chunks[0].slice(0, 64) : new Uint8Array(0);
+
                 // Revoke the blob URL in the offscreen document context after 2 minutes
                 // to prevent memory leaks, giving enough time for the download to start and finish.
                 setTimeout(() => {
@@ -78,7 +81,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     URL.revokeObjectURL(blobUrl);
                 }, 120_000);
 
-                sendResponse({ success: true, blobUrl, mimeType: response.headers.get('content-type') });
+                sendResponse({ success: true, blobUrl, mimeType: response.headers.get('content-type'), headerBytes: Array.from(headerBytes) });
 
             } catch (err) {
                 console.error('[Gravity Offscreen] Fetch error:', err);

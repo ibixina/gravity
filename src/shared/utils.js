@@ -2,6 +2,114 @@
 // Single source of truth to prevent divergence between copies.
 
 /**
+ * Detect file extension from magic bytes (file signature).
+ * Works like the `file` command on Linux by reading the file header.
+ * @param {Uint8Array|ArrayBuffer|number[]} bytes - The first bytes of the file
+ * @returns {string|null} - The detected extension or null if unknown
+ */
+export function detectExtensionFromBytes(bytes) {
+    if (!bytes || bytes.byteLength < 4) return null;
+    
+    const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    const b = (i) => arr[i];
+    
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if (b(0) === 0x89 && b(1) === 0x50 && b(2) === 0x4E && b(3) === 0x47) {
+        return 'png';
+    }
+    
+    // JPEG: FF D8 FF
+    if (b(0) === 0xFF && b(1) === 0xD8 && b(2) === 0xFF) {
+        return 'jpg';
+    }
+    
+    // GIF: 47 49 46 38 (GIF8)
+    if (b(0) === 0x47 && b(1) === 0x49 && b(2) === 0x46 && b(3) === 0x38) {
+        return 'gif';
+    }
+    
+    // WebP: 52 49 46 46 .... 57 45 42 50 (RIFF....WEBP)
+    if (b(0) === 0x52 && b(1) === 0x49 && b(2) === 0x46 && b(3) === 0x46 &&
+        arr.byteLength >= 12 && b(8) === 0x57 && b(9) === 0x45 && b(10) === 0x42 && b(11) === 0x50) {
+        return 'webp';
+    }
+    
+    // WebM / EBML: 1A 45 DF A3
+    if (b(0) === 0x1A && b(1) === 0x45 && b(2) === 0xDF && b(3) === 0xA3) {
+        return 'webm';
+    }
+    
+    // MP4/MOV: at offset 4, bytes are "ftyp" (66 74 79 70)
+    if (arr.byteLength >= 8 && b(4) === 0x66 && b(5) === 0x74 && b(6) === 0x79 && b(7) === 0x70) {
+        // Check for variant: 4D534E56 (M4V), 69736F6D (isom), 6D706432 (mp42)
+        const brand = (b(8) << 24) | (b(9) << 16) | (b(10) << 8) | b(11);
+        if (brand === 0x4D534E56) return 'm4v';
+        if (brand === 0x69736F6D) return 'mp4';
+        if (brand === 0x6D703432) return 'mp4';
+        if (brand === 0x6D703432) return 'mp4';
+        return 'mp4';
+    }
+    
+    // FLAC: 66 4C 61 43
+    if (b(0) === 0x66 && b(1) === 0x4C && b(2) === 0x61 && b(3) === 0x43) {
+        return 'flac';
+    }
+    
+    // OGG: 4F 67 67 53
+    if (b(0) === 0x4F && b(1) === 0x67 && b(2) === 0x67 && b(3) === 0x53) {
+        return 'ogg';
+    }
+    
+    // PDF: 25 50 44 46
+    if (b(0) === 0x25 && b(1) === 0x50 && b(2) === 0x44 && b(3) === 0x46) {
+        return 'pdf';
+    }
+    
+    // ZIP / APK / DOCX: 50 4B 03 04
+    if (b(0) === 0x50 && b(1) === 0x4B && b(2) === 0x03 && b(3) === 0x04) {
+        return 'zip';
+    }
+    
+    // MP3: 49 44 33 (ID3) or FF (MPEG audio frame)
+    if (b(0) === 0x49 && b(1) === 0x44 && b(2) === 0x33) {
+        return 'mp3';
+    }
+    if (b(0) === 0xFF && (b(1) & 0xE0) === 0xE0) {
+        return 'mp3';
+    }
+    
+    // WAV: 52 49 46 46 .... 57 41 56 45 (RIFF....WAVE)
+    if (b(0) === 0x52 && b(1) === 0x49 && b(2) === 0x46 && b(3) === 0x46 &&
+        arr.byteLength >= 12 && b(8) === 0x57 && b(9) === 0x41 && b(10) === 0x56 && b(11) === 0x45) {
+        return 'wav';
+    }
+    
+    // AVIF: at offset 4 bytes are "avif" (61 76 69 66) or "avis" (61 76 69 73)
+    if (arr.byteLength >= 8 && b(4) === 0x61 && b(5) === 0x76 && (b(6) === 0x69 || b(6) === 0x49) && (b(7) === 0x66 || b(7) === 0x66)) {
+        return 'avif';
+    }
+    
+    // HEIC/HEIF: at offset 4 bytes are "heic" or "heix" or "mif1" or "msf1"
+    if (arr.byteLength >= 8 && b(4) === 0x68 && b(5) === 0x65 && b(6) === 0x69) {
+        return 'heic';
+    }
+    
+    // BMP: 42 4D (BM)
+    if (b(0) === 0x42 && b(1) === 0x4D) {
+        return 'bmp';
+    }
+    
+    // TIFF (little endian): 49 49 2A 00
+    // TIFF (big endian): 4D 4D 00 2A
+    if ((b(0) === 0x49 && b(1) === 0x49 && b(2) === 0x2A && b(3) === 0x00) ||
+        (b(0) === 0x4D && b(1) === 0x4D && b(2) === 0x00 && b(3) === 0x2A)) {
+        return 'tiff';
+    }
+    
+    return null;
+}
+
+/**
  * Maps a MIME type (e.g. 'video/mp4') to a file extension (e.g. 'mp4').
  * Returns null if the MIME type is not recognised.
  */
@@ -45,12 +153,13 @@ export function getTimestamp() {
 }
 
 /**
- * Infer a filename from a URL, MIME type, and optional Content-Disposition header.
+ * Infer a filename from a URL, MIME type, Content-Disposition header, or magic bytes.
  * All filenames are prefixed with "Gravity_" and include a timestamp.
  */
-export function inferFilename(url, mimeType, contentDisposition) {
+export function inferFilename(url, mimeType, contentDisposition, initialBytes) {
     const timestamp = getTimestamp();
-    const ext = mimeToExt(mimeType) || 'bin';
+    const extFromBytes = initialBytes ? detectExtensionFromBytes(initialBytes) : null;
+    const ext = mimeToExt(mimeType) || extFromBytes || 'bin';
 
     // 1. Prefer filename from Content-Disposition header (most accurate)
     if (contentDisposition) {

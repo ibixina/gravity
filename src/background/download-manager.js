@@ -1,7 +1,7 @@
 // download-manager.js — Handles offscreen document lifecycle and download execution.
 // Extracted from message-handler.js for single responsibility.
 
-import { mimeToExt, inferFilename, getTimestamp } from '../shared/utils.js';
+import { mimeToExt, inferFilename, getTimestamp, detectExtensionFromBytes } from '../shared/utils.js';
 import { setupDownloadHeaders } from './header-manager.js';
 import { notifyDownloadError, notifyTab } from './notify.js';
 
@@ -54,11 +54,14 @@ export async function downloadViaOffscreenDocument(url, tabId, filename, referer
             }
 
             let finalName = filename;
-            if (response.mimeType) {
+            const extFromBytes = response.headerBytes ? detectExtensionFromBytes(response.headerBytes) : null;
+            const extFromMime = response.mimeType ? mimeToExt(response.mimeType) : null;
+            const ext = extFromBytes || extFromMime;
+            
+            if (ext) {
                 const hasExt = /\.[a-zA-Z0-9]{2,5}$/.test(finalName);
                 if (!hasExt) {
-                    const ext = mimeToExt(response.mimeType);
-                    if (ext) finalName += `.${ext}`;
+                    finalName += `.${ext}`;
                 }
             }
 
