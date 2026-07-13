@@ -52,7 +52,6 @@
         }
     ],
     "action": {
-        "default_popup": "src/popup/popup.html",
         "default_icon": {
             "16": "icons/gravity-16.png",
             "32": "icons/gravity-32.png",

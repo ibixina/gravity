@@ -235,6 +235,15 @@ document.addEventListener('contextmenu', async (e) => {
 }, true);
 
 
+window.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'gravity:disable-pick-mode') {
+        if (pickModeActive) {
+            disablePickMode();
+            broadcastPickModeDisabled();
+        }
+    }
+}, false);
+
 
 chrome.runtime.onMessage.addListener((request) => {
     console.log(`[Gravity UI] Inbound message: ${request.type}`, request.payload);
@@ -253,6 +262,12 @@ chrome.runtime.onMessage.addListener((request) => {
         pickModeActive = !pickModeActive;
         if (pickModeActive) enablePickMode();
         else disablePickMode();
+
+    } else if (request.type === 'gravity:disable-pick-mode') {
+        if (pickModeActive) {
+            disablePickMode();
+            broadcastPickModeDisabled();
+        }
 
     } else if (request.type === 'gravity:toast') {
         const { level = 'error', message } = request.payload || {};
@@ -806,6 +821,19 @@ function disablePickMode() {
     hoveredElement = null;
 }
 
+function broadcastPickModeDisabled() {
+    try {
+        if (window.parent !== window) {
+            window.parent.postMessage({ type: 'gravity:disable-pick-mode' }, '*');
+        }
+        if (window.top !== window && window.top !== window.parent) {
+            window.top.postMessage({ type: 'gravity:disable-pick-mode' }, '*');
+        }
+    } catch (e) {
+        console.log('[Gravity] Could not broadcast pick mode disable:', e);
+    }
+}
+
 function handlePickMove(e) {
     if (!pickModeActive) return;
 
@@ -912,7 +940,11 @@ function handlePickClick(e) {
                 setTimeout(() => {
                     highlight.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
                     disablePickMode();
+                    broadcastPickModeDisabled();
                 }, 300);
+            } else {
+                disablePickMode();
+                broadcastPickModeDisabled();
             }
             triggerDownload(result, filename, hoveredElement.tagName);
         } else {
@@ -923,6 +955,7 @@ function handlePickClick(e) {
                 'error'
             );
             disablePickMode();
+            broadcastPickModeDisabled();
         }
     } else {
         showToast('Click on a highlighted media element to download it.', 'warning');
